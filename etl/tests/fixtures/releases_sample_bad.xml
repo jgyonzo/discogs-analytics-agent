@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<releases>
+
+  <!-- Two releases sharing the same id="2001". -->
+  <!-- This is the critical DQ violation: stg_releases.release_id_unique. -->
+  <!-- Used to validate FR-022 / SC-006: publish step must not run; previous publish untouched. -->
+
+  <release id="2001" status="Accepted">
+    <artists>
+      <artist><id>21</id><name>Bad Sample Artist A</name></artist>
+    </artists>
+    <title>Bad Sample Release Alpha</title>
+    <labels>
+      <label name="Bad Records" catno="BAD-001" id="201"/>
+    </labels>
+    <formats>
+      <format name="Vinyl" qty="1" text=""><descriptions><description>LP</description></descriptions></format>
+    </formats>
+    <genres><genre>Electronic</genre></genres>
+    <styles><style>House</style></styles>
+    <country>UK</country>
+    <released>2020-01-01</released>
+    <notes>Bad sample first release with id=2001.</notes>
+    <data_quality>Correct</data_quality>
+    <master_id is_main_release="true">9201</master_id>
+    <tracklist>
+      <track><position>A</position><title>Bad Alpha One</title></track>
+    </tracklist>
+  </release>
+
+  <release id="2001" status="Accepted">
+    <artists>
+      <artist><id>22</id><name>Bad Sample Artist B</name></artist>
+    </artists>
+    <title>Bad Sample Release Bravo (duplicate id)</title>
+    <labels>
+      <label name="Bad Records" catno="BAD-002" id="201"/>
+    </labels>
+    <formats>
+      <format name="CD" qty="1" text=""><descriptions><description>Album</description></descriptions></format>
+    </formats>
+    <genres><genre>Electronic</genre></genres>
+    <styles><style>Techno</style></styles>
+    <country>DE</country>
+    <released>2021-03-15</released>
+    <notes>Bad sample second release sharing id=2001.</notes>
+    <data_quality>Correct</data_quality>
+    <master_id is_main_release="true">9202</master_id>
+    <tracklist>
+      <track><position>1</position><title>Bad Bravo One</title></track>
+    </tracklist>
+  </release>
+
+</releases>

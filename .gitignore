@@ -6,3 +6,12 @@ __pycache__/
 *.pyc
 .DS_Store
 .claude/
+
+# ETL runtime data — gitignored except for fixtures under etl/tests/fixtures/
+data/
+
+# Python packaging artifacts
+*.egg-info/
+dist/
+build/
+.pytest_cache/

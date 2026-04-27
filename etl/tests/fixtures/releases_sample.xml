@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<releases>
+
+  <!-- 1001: happy path. Full date, single style, single artist/label, vinyl format. -->
+  <release id="1001" status="Accepted">
+    <artists>
+      <artist><id>11</id><name>Artist One</name></artist>
+    </artists>
+    <title>Sample Release Alpha</title>
+    <labels>
+      <label name="Foo Records" catno="FR-001" id="101"/>
+    </labels>
+    <formats>
+      <format name="Vinyl" qty="1" text=""><descriptions><description>LP</description></descriptions></format>
+    </formats>
+    <genres><genre>Electronic</genre></genres>
+    <styles><style>Deep House</style></styles>
+    <country>UK</country>
+    <released>1999-07-13</released>
+    <notes>Curated fixture: happy path.</notes>
+    <data_quality>Correct</data_quality>
+    <master_id is_main_release="true">9001</master_id>
+    <tracklist>
+      <track><position>A</position><title>Track 1</title></track>
+      <track><position>B</position><title>Track 2</title></track>
+    </tracklist>
+  </release>
+
+  <!-- 1002: partial date YYYY-MM-00 (month precision). -->
+  <release id="1002" status="Accepted">
+    <artists>
+      <artist><id>12</id><name>Artist Two</name></artist>
+    </artists>
+    <title>Sample Release Bravo</title>
+    <labels>
+      <label name="Bar Records" catno="BR-002" id="102"/>
+    </labels>
+    <formats>
+      <format name="Vinyl" qty="1" text=""><descriptions><description>12"</description></descriptions></format>
+    </formats>
+    <genres><genre>Electronic</genre></genres>
+    <styles><style>Ambient</style></styles>
+    <country>DE</country>
+    <released>1998-06-00</released>
+    <notes>Curated fixture: month-precision date.</notes>
+    <data_quality>Correct</data_quality>
+    <master_id is_main_release="true">9002</master_id>
+    <tracklist>
+      <track><position>A1</position><title>Bravo One</title></track>
+    </tracklist>
+  </release>
+
+  <!-- 1003: year-only date, NO STYLES. -->
+  <release id="1003" status="Accepted">
+    <artists>
+      <artist><id>13</id><name>Artist Three</name></artist>
+    </artists>
+    <title>Sample Release Charlie</title>
+    <labels>
+      <label name="Baz Records" catno="BZ-003" id="103"/>
+    </labels>
+    <formats>
+      <format name="CD" qty="1" text=""><descriptions><description>Album</description></descriptions></format>
+    </formats>
+    <genres><genre>Rock</genre></genres>
+    <country>US</country>
+    <released>1985</released>
+    <notes>Curated fixture: year-only date and no styles. Should produce 1 row in release_fact with style_order=0 and style=NULL.</notes>
+    <data_quality>Correct</data_quality>
+    <master_id is_main_release="true">9003</master_id>
+    <tracklist>
+      <track><position>1</position><title>Charlie One</title></track>
+    </tracklist>
+  </release>
+
+  <!-- 1004: unknown date, NO FORMATS. -->
+  <release id="1004" status="Accepted">
+    <artists>
+      <artist><id>14</id><name>Artist Four</name></artist>
+    </artists>
+    <title>Sample Release Delta</title>
+    <labels>
+      <label name="Qux Records" catno="QX-004" id="104"/>
+    </labels>
+    <genres><genre>Jazz</genre></genres>
+    <styles><style>Jazz Fusion</style></styles>
+    <country>FR</country>
+    <released>Unknown</released>
+    <notes>Curated fixture: unknown date and no formats element.</notes>
+    <data_quality>Needs Vote</data_quality>
+    <master_id is_main_release="true">9004</master_id>
+    <tracklist>
+      <track><position>A</position><title>Delta One</title></track>
+    </tracklist>
+  </release>
+
+  <!-- 1005: unmapped format name (Floppy), NO GENRES. -->
+  <release id="1005" status="Accepted">
+    <artists>
+      <artist><id>15</id><name>Artist Five</name></artist>
+    </artists>
+    <title>Sample Release Echo</title>
+    <labels>
+      <label name="Quux Records" catno="QU-005" id="105"/>
+    </labels>
+    <formats>
+      <format name="Floppy" qty="1" text=""><descriptions><description>3.5"</description></descriptions></format>
+    </formats>
+    <country>JP</country>
+    <released>2003-01-15</released>
+    <notes>Curated fixture: unmapped format name and no genres element.</notes>
+    <data_quality>Correct</data_quality>
+    <master_id is_main_release="true">9005</master_id>
+    <tracklist>
+      <track><position>1</position><title>Echo One</title></track>
+    </tracklist>
+  </release>
+
+  <!-- 1006: TWO LABEL ENTRIES differing only in catno; should be preserved (not deduped). -->
+  <!-- Also has style 'Techno' so the canonical agent query exercises non-empty data. -->
+  <release id="1006" status="Accepted">
+    <artists>
+      <artist><id>16</id><name>Artist Six</name></artist>
+    </artists>
+    <title>Sample Release Foxtrot</title>
+    <labels>
+      <label name="Multi Records" catno="MR-006-A" id="106"/>
+      <label name="Multi Records" catno="MR-006-B" id="106"/>
+    </labels>
+    <formats>
+      <format name="CD" qty="1" text=""><descriptions><description>Album</description></descriptions></format>
+    </formats>
+    <genres><genre>Electronic</genre></genres>
+    <styles><style>Techno</style></styles>
+    <country>NL</country>
+    <released>2010-05-20</released>
+    <notes>Curated fixture: two labels differing only in catno; both must survive dedup.</notes>
+    <data_quality>Correct</data_quality>
+    <master_id is_main_release="true">9006</master_id>
+    <tracklist>
+      <track><position>1</position><title>Foxtrot One</title></track>
+    </tracklist>
+  </release>
+
+  <!-- 1007: MULTI-FORMAT (CD + Vinyl) and MULTI-STYLE (3 styles). -->
+  <!-- Verifies release_format_summary.has_* aggregation and release_fact row multiplication on style. -->
+  <release id="1007" status="Accepted">
+    <artists>
+      <artist><id>17</id><name>Artist Seven</name></artist>
+    </artists>
+    <title>Sample Release Golf</title>
+    <labels>
+      <label name="Septi Records" catno="SR-007" id="107"/>
+    </labels>
+    <formats>
+      <format name="CD" qty="1" text=""><descriptions><description>Album</description></descriptions></format>
+      <format name="Vinyl" qty="2" text=""><descriptions><description>LP</description></descriptions></format>
+    </formats>
+    <genres><genre>Electronic</genre></genres>
+    <styles>
+      <style>Ambient</style>
+      <style>Dub</style>
+      <style>Downtempo</style>
+    </styles>
+    <country>UK</country>
+    <released>2015-09-01</released>
+    <notes>Curated fixture: 2 formats and 3 styles. Expect 3 release_fact rows for release_id=1007.</notes>
+    <data_quality>Correct</data_quality>
+    <master_id is_main_release="true">9007</master_id>
+    <tracklist>
+      <track><position>A1</position><title>Golf One</title></track>
+      <track><position>A2</position><title>Golf Two</title></track>
+    </tracklist>
+  </release>
+
+</releases>

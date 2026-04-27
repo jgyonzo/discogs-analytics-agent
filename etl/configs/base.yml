@@ -1,0 +1,12 @@
+snapshot_id: discogs-2026-04
+paths:
+  raw_dir: data/raw/discogs
+  staging_dir: data/staging
+  clean_dir: data/clean
+  analytics_dir: data/analytics
+  published_duckdb: data/published/duckdb/discogs.duckdb
+  manifests_dir: data/manifests
+  logs_dir: data/logs
+limits:
+  parser_batch_size: 50000
+  log_progress_every: 10000
