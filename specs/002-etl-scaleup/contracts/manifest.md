@@ -65,6 +65,7 @@ Added to `quality_checks.warnings`. Each is a
 | `prepare_sources.gz_input` | informational | The chosen input is gzipped — confirms which path was taken. `details` is the input path. |
 | `prepare_sources.gz_and_plain_present` | informational | Both `releases.xml` and `releases.xml.gz` exist; uncompressed wins (FR-010). `details` lists both paths. |
 | `runtime.peak_rss_exceeds_cap` | informational (**not** a critical failure) | A step's `peak_rss_bytes` exceeded `limits.peak_rss_cap_gib * 2^30` (FR-013). `details` includes the step name and observed peak. |
+| `normalize_release_entities.format_quantity_overflow` | informational (**not** a critical failure) | Real Discogs data contains `<format qty>` typos that overflow int64 (e.g., 60-digit integer literals). Such cells are stored as NULL (FR-006). `details` includes the affected row count. *(Retroactively added; fixed in commit `2e6461a`.)* |
 
 The Fase 1 warnings remain unchanged and continue to be emitted
 under the same names.

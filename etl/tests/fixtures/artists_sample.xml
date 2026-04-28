@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<artists>
+
+  <!-- 10001: full fields. Short profile. Used as the canonical reference. -->
+  <artist>
+    <id>10001</id>
+    <name>Artist Alpha</name>
+    <realname>Real Alpha</realname>
+    <profile>Short bio.</profile>
+    <data_quality>Correct</data_quality>
+  </artist>
+
+  <!-- 10002: no realname, no profile — exercises NULL handling. -->
+  <artist>
+    <id>10002</id>
+    <name>Artist Bravo</name>
+    <data_quality>Needs Vote</data_quality>
+  </artist>
+
+  <!-- 10003: long multi-paragraph profile — exercises long-text round-trip. -->
+  <artist>
+    <id>10003</id>
+    <name>Artist Charlie</name>
+    <realname>Real Charlie</realname>
+    <profile>Paragraph one of the bio. This artist has been working
+    in the field for many years and has many things to say.
+
+    Paragraph two with more details about the artistic journey,
+    including collaborations and notable releases. Lorem ipsum
+    dolor sit amet, consectetur adipiscing elit, sed do eiusmod
+    tempor incididunt ut labore et dolore magna aliqua.
+
+    Paragraph three closes out the bio with a forward-looking
+    statement.</profile>
+    <data_quality>Correct</data_quality>
+  </artist>
+
+  <!-- 10004: Unicode in <name> and <realname> — exercises UTF-8 round-trip. -->
+  <artist>
+    <id>10004</id>
+    <name>Sigur Rós</name>
+    <realname>Iceland Band</realname>
+    <data_quality>Correct</data_quality>
+  </artist>
+
+  <!-- 10005: nested aliases / members / groups blocks. Per Q1=B, the
+       parser MUST visit but NOT extract their contents in this spec.
+       The clean_artists row should still be produced with the
+       top-level fields only. -->
+  <artist>
+    <id>10005</id>
+    <name>Artist Echo</name>
+    <realname>Echo Band</realname>
+    <data_quality>Correct</data_quality>
+    <namevariations>
+      <name>ArtistE</name>
+      <name>A. Echo</name>
+    </namevariations>
+    <urls>
+      <url>https://example.org/artist-echo</url>
+    </urls>
+    <aliases>
+      <name id="50001">Alias One</name>
+      <name id="50002">Alias Two</name>
+    </aliases>
+    <members>
+      <name id="50003">Member One</name>
+    </members>
+    <groups>
+      <name id="50004">Group One</name>
+    </groups>
+  </artist>
+
+</artists>

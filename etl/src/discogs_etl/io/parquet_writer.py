@@ -35,7 +35,13 @@ class BatchedParquetWriter:
 
     @property
     def row_count(self) -> int:
-        return self._row_count
+        # Total rows seen via write() — buffered + flushed. Without adding
+        # the buffered count, callers reading row_count INSIDE the ``with``
+        # block (the natural place; the writer is closed on exit) get a
+        # pre-flush 0 for any output that fits in a single batch. This
+        # latent bug went undetected through Fase 1+2+3 because no test
+        # asserted on manifest.outputs.<layer>.<table>.row_count.
+        return self._row_count + len(self._buffer)
 
     def __enter__(self) -> "BatchedParquetWriter":
         self.path.parent.mkdir(parents=True, exist_ok=True)

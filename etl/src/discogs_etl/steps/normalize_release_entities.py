@@ -74,7 +74,7 @@ class NormalizeReleaseEntitiesStep:
         reporter = ProgressReporter(
             ctx.logger, self.name, ctx.config.limits.log_progress_every,
         )
-        n_unmapped = self._normalize_formats(
+        n_unmapped, n_qty_overflow = self._normalize_formats(
             ctx=ctx, run_id=run_id, batch_size=batch_size, paths=paths,
             reporter=reporter,
         )
@@ -89,6 +89,12 @@ class NormalizeReleaseEntitiesStep:
             manifest.warn(
                 "normalize_release_entities.unmapped_format_names",
                 f"{n_unmapped} format row(s) had unmapped format_name; mapped to 'Other'",
+            )
+        if n_qty_overflow > 0:
+            manifest.warn(
+                "normalize_release_entities.format_quantity_overflow",
+                f"{n_qty_overflow} format row(s) had qty values outside int64 range; "
+                "stored as NULL (Discogs data artifact)",
             )
 
         self._normalize_simple(
@@ -184,10 +190,22 @@ class NormalizeReleaseEntitiesStep:
     def _normalize_formats(
         *, ctx: RunContext, run_id, batch_size, paths,
         reporter: ProgressReporter | None = None,
-    ) -> int:
-        """Join staging format rows with their descriptions and derive flags."""
+    ) -> tuple[int, int]:
+        """Join staging format rows with their descriptions and derive flags.
+
+        Returns (n_unmapped_format_names, n_qty_overflow). Real Discogs data
+        contains absurd ``qty`` typos (e.g. 60-digit integers) that exceed
+        any fixed-width integer type. We NULL such values and count them
+        for a manifest warning rather than letting pyarrow blow up the run.
+        """
         fmt_path = ctx.staging_dir / "stg_release_formats.parquet"
         desc_path = ctx.staging_dir / "stg_release_format_descriptions.parquet"
+
+        # int64 fits the legitimate-but-large qty values (e.g. 5_000_000_000,
+        # 9_999_999_999) seen in the wild. Anything outside this range is
+        # treated as data garbage and stored as NULL.
+        _INT64_MAX = (1 << 63) - 1
+        _INT64_MIN = -(1 << 63)
 
         descs_by_format: dict[tuple[int, int], list[str]] = defaultdict(list)
         for row in pq.read_table(desc_path).to_pylist():
@@ -197,6 +215,7 @@ class NormalizeReleaseEntitiesStep:
             descs_by_format[(row["release_id"], row["format_order"])].append(d)
 
         n_unmapped = 0
+        n_qty_overflow = 0
         with BatchedParquetWriter(paths["clean_release_formats"],
                                   schemas.CLEAN_RELEASE_FORMATS,
                                   batch_size=batch_size) as w:
@@ -207,6 +226,9 @@ class NormalizeReleaseEntitiesStep:
                 order = int(row["format_order"])
                 name_raw = clean_text(row["format_name"])
                 qty = clean_int(row["format_qty_raw"])
+                if qty is not None and not (_INT64_MIN <= qty <= _INT64_MAX):
+                    n_qty_overflow += 1
+                    qty = None
                 text = clean_text(row["format_text"])
                 descs = descs_by_format.get((rid, order), [])
                 group, was_mapped = derive_format_group(name_raw)
@@ -228,7 +250,7 @@ class NormalizeReleaseEntitiesStep:
                     "is_box_set_format": derive_is_box_set(group, descs),
                     "run_id": run_id,
                 })
-        return n_unmapped
+        return n_unmapped, n_qty_overflow
 
 
 def _count_rows(parquet_path) -> int:

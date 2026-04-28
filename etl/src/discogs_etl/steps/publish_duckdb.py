@@ -23,13 +23,18 @@ class PublishDuckdbStep:
 
     def run(self, ctx: RunContext, manifest: Manifest) -> None:
         canonical = ctx.config.paths.published_duckdb
-        publish(analytics_dir=ctx.analytics_dir, published_duckdb=canonical)
+        published_tables = publish(
+            analytics_dir=ctx.analytics_dir, published_duckdb=canonical,
+        )
         manifest.record_output(
             "published",
             "duckdb",
             path=canonical,
             published_at=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-            tables=["release_fact", "release_artist_bridge", "release_label_bridge"],
+            tables=published_tables,
             views=["release_unique_view"],
         )
-        ctx.logger.info("publish_duckdb: published at %s", canonical)
+        ctx.logger.info(
+            "publish_duckdb: published at %s (tables=%s)",
+            canonical, published_tables,
+        )

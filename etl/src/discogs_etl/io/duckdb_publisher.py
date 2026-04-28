@@ -11,7 +11,8 @@ import duckdb
 from .file_utils import atomic_replace
 
 
-_PUBLISHED_TABLES = ("release_fact", "release_artist_bridge", "release_label_bridge")
+_CORE_TABLES = ("release_fact", "release_artist_bridge", "release_label_bridge")
+_OPTIONAL_TABLES = ("master_fact",)
 
 # Column list for release_unique_view, per contracts/duckdb-schema.md and source spec §10.
 _RELEASE_UNIQUE_VIEW_COLUMNS = [
@@ -51,22 +52,35 @@ _RELEASE_UNIQUE_VIEW_COLUMNS = [
 ]
 
 
-def publish(*, analytics_dir: str | Path, published_duckdb: str | Path) -> None:
+def publish(*, analytics_dir: str | Path, published_duckdb: str | Path) -> list[str]:
     """Build a fresh DuckDB at <published_duckdb>.new from analytics parquet, then atomic-rename.
 
-    Raises FileNotFoundError if any expected analytics parquet is missing.
-    On any exception during the build, the .new file is removed; the canonical
-    path is left untouched.
+    Raises FileNotFoundError if any *core* analytics parquet
+    (`release_fact`, `release_artist_bridge`, `release_label_bridge`)
+    is missing. *Optional* tables (currently `master_fact`, added in
+    spec 003-masters-artists) are added only when their parquet
+    exists; absence is silent (FR-012).
+
+    Returns the list of published table names (in creation order).
+    On any exception during the build, the .new file is removed; the
+    canonical path is left untouched.
     """
     analytics = Path(analytics_dir)
     canonical = Path(published_duckdb)
     canonical.parent.mkdir(parents=True, exist_ok=True)
 
-    parquets = {name: analytics / f"{name}.parquet" for name in _PUBLISHED_TABLES}
-    missing = [str(p) for p in parquets.values() if not p.exists()]
+    core_parquets = {name: analytics / f"{name}.parquet" for name in _CORE_TABLES}
+    missing = [str(p) for p in core_parquets.values() if not p.exists()]
     if missing:
-        raise FileNotFoundError(f"missing analytics parquet: {missing}")
+        raise FileNotFoundError(f"missing core analytics parquet: {missing}")
 
+    optional_parquets = {
+        name: analytics / f"{name}.parquet"
+        for name in _OPTIONAL_TABLES
+        if (analytics / f"{name}.parquet").exists()
+    }
+
+    published_tables: list[str] = []
     new_path = canonical.with_suffix(canonical.suffix + ".new")
     if new_path.exists():
         new_path.unlink()
@@ -74,15 +88,21 @@ def publish(*, analytics_dir: str | Path, published_duckdb: str | Path) -> None:
     try:
         con = duckdb.connect(str(new_path))
         try:
-            for name, path in parquets.items():
+            for name, path in core_parquets.items():
                 con.execute(
                     f"CREATE TABLE {name} AS SELECT * FROM read_parquet('{path.as_posix()}')"
                 )
+                published_tables.append(name)
             cols = ",\n  ".join(_RELEASE_UNIQUE_VIEW_COLUMNS)
             con.execute(
                 "CREATE OR REPLACE VIEW release_unique_view AS\n"
                 f"SELECT DISTINCT\n  {cols}\nFROM release_fact"
             )
+            for name, path in optional_parquets.items():
+                con.execute(
+                    f"CREATE TABLE {name} AS SELECT * FROM read_parquet('{path.as_posix()}')"
+                )
+                published_tables.append(name)
         finally:
             con.close()
     except Exception:
@@ -94,3 +114,4 @@ def publish(*, analytics_dir: str | Path, published_duckdb: str | Path) -> None:
         raise
 
     atomic_replace(new_path, canonical)
+    return published_tables

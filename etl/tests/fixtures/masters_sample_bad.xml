@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<masters>
+
+  <!-- Two <master> elements sharing id="9001". -->
+  <!-- Validates FR-022 inheritance for the new layer: critical DQ violation
+       (stg_masters.master_id_unique) → exit 1, master_fact NOT published,
+       prior published DuckDB byte-identical. -->
+
+  <master id="9001">
+    <main_release>1001</main_release>
+    <title>Bad Master Alpha</title>
+    <year>2020</year>
+    <data_quality>Correct</data_quality>
+  </master>
+
+  <master id="9001">
+    <main_release>1002</main_release>
+    <title>Bad Master Bravo (duplicate id)</title>
+    <year>2021</year>
+    <data_quality>Correct</data_quality>
+  </master>
+
+</masters>

@@ -34,6 +34,8 @@ from .dispatch import run_check
 
 _DEFAULT_THRESHOLD = 10_000_000
 
+VALID_YEAR_PRECISIONS: frozenset[str] = frozenset({"year", "unknown", "invalid"})
+
 
 def _read(path: Path):
     return pq.read_table(path)
@@ -260,6 +262,38 @@ def run_staging_checks(
         passed=rel.num_rows > 0,
         details=None if rel.num_rows > 0 else "0 rows in stg_releases",
     ))
+
+    # Fase 4: optional masters / artists staging checks.
+    masters_path = staging_dir / "stg_masters.parquet"
+    if masters_path.exists():
+        masters_table = _read(masters_path)
+        results.append(_check_no_null(
+            masters_table, "master_id",
+            name="stg_masters.master_id_not_null",
+            layer="staging", table_name="stg_masters",
+        ))
+        results.append(run_check(
+            masters_path, _check_unique, _check_unique_sql, "master_id",
+            threshold=threshold,
+            name="stg_masters.master_id_unique",
+            layer="staging", table_name="stg_masters",
+        ))
+
+    artists_path = staging_dir / "stg_artists.parquet"
+    if artists_path.exists():
+        artists_table = _read(artists_path)
+        results.append(_check_no_null(
+            artists_table, "artist_id",
+            name="stg_artists.artist_id_not_null",
+            layer="staging", table_name="stg_artists",
+        ))
+        results.append(run_check(
+            artists_path, _check_unique, _check_unique_sql, "artist_id",
+            threshold=threshold,
+            name="stg_artists.artist_id_unique",
+            layer="staging", table_name="stg_artists",
+        ))
+
     return results
 
 
@@ -329,12 +363,70 @@ def run_clean_checks(
                                        name=f"release_format_summary.{col}_not_null",
                                        layer="clean", table_name="release_format_summary"))
 
+    # Fase 4: optional clean_masters / clean_artists checks.
+    cm_path = clean_dir / "clean_masters.parquet"
+    if cm_path.exists():
+        cm = _read(cm_path)
+        results.append(run_check(
+            cm_path, _check_unique, _check_unique_sql, "master_id",
+            threshold=threshold,
+            name="clean_masters.master_id_unique",
+            layer="clean", table_name="clean_masters",
+        ))
+        results.append(_check_in_set(
+            cm, "year_precision", VALID_YEAR_PRECISIONS,
+            name="clean_masters.year_precision_in_enum",
+            layer="clean", table_name="clean_masters",
+        ))
+
+    ca_path = clean_dir / "clean_artists.parquet"
+    if ca_path.exists():
+        results.append(run_check(
+            ca_path, _check_unique, _check_unique_sql, "artist_id",
+            threshold=threshold,
+            name="clean_artists.artist_id_unique",
+            layer="clean", table_name="clean_artists",
+        ))
+
     return results
+
+
+def _check_sum_release_count_equals(
+    master_fact_path: Path, clean_releases_path: Path,
+    *, name, layer, table_name,
+) -> CheckResult:
+    """Cross-table consistency check (FR-015 / SC-003).
+
+    SQL-only standalone helper (per spec ``003-masters-artists`` /
+    ``research.md`` R-05): asserts
+    ``SUM(master_fact.release_count) = COUNT(clean_releases WHERE master_id IS NOT NULL)``.
+    """
+    src_mf = _src(master_fact_path)
+    src_cr = _src(clean_releases_path)
+    con = duckdb.connect(":memory:")
+    try:
+        sum_ = con.execute(
+            f"SELECT COALESCE(SUM(release_count), 0) FROM {src_mf}"
+        ).fetchone()[0]
+        cnt_ = con.execute(
+            f"SELECT COUNT(*) FROM {src_cr} WHERE master_id IS NOT NULL"
+        ).fetchone()[0]
+    finally:
+        con.close()
+    passed = int(sum_) == int(cnt_)
+    return CheckResult(
+        name=name, layer=layer, table=table_name, severity="critical",
+        passed=passed,
+        details=None if passed
+        else f"SUM(master_fact.release_count)={sum_} != "
+             f"COUNT(clean_releases WHERE master_id IS NOT NULL)={cnt_}",
+    )
 
 
 def run_analytics_checks(
     analytics_dir: Path, clean_releases_row_count: int,
     *, threshold: int = _DEFAULT_THRESHOLD,
+    clean_dir: Path | None = None,
 ) -> list[CheckResult]:
     results: list[CheckResult] = []
 
@@ -403,5 +495,32 @@ def run_analytics_checks(
         name="release_label_bridge.at_most_one_primary",
         layer="analytics", table_name="release_label_bridge",
     ))
+
+    # Fase 4: optional master_fact checks.
+    mf_path = analytics_dir / "master_fact.parquet"
+    if mf_path.exists():
+        mf = _read(mf_path)
+        results.append(run_check(
+            mf_path, _check_unique, _check_unique_sql, "master_id",
+            threshold=threshold,
+            name="master_fact.master_id_unique",
+            layer="analytics", table_name="master_fact",
+        ))
+        results.append(_check_min_value(
+            mf, "release_count", 0,
+            name="master_fact.release_count_non_negative",
+            layer="analytics", table_name="master_fact",
+        ))
+        # Cross-table consistency: sum-equals-count via the standalone helper.
+        # Caller (steps/quality_checks.py) passes clean_dir explicitly to
+        # avoid fragile path derivation across spec-versioned layouts.
+        if clean_dir is not None:
+            cr_path = Path(clean_dir) / "clean_releases.parquet"
+            if cr_path.exists():
+                results.append(_check_sum_release_count_equals(
+                    mf_path, cr_path,
+                    name="master_fact.sum_release_count_equals_clean_releases_with_master_id",
+                    layer="analytics", table_name="master_fact",
+                ))
 
     return results

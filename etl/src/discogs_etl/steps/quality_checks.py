@@ -36,6 +36,7 @@ class QualityChecksStep:
         )
         all_results.extend(run_analytics_checks(
             ctx.analytics_dir, clean_releases_count, threshold=threshold,
+            clean_dir=ctx.clean_dir,
         ))
 
         for r in all_results:

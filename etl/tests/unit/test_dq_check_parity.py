@@ -141,3 +141,63 @@ def test_run_check_dispatch_uses_sql_above_threshold(tmp_path: Path):
     via_sql = run_check(path, _check_unique, _check_unique_sql, "rid",
                         threshold=0, **common)
     assert _identical(in_mem, via_sql) and via_sql.passed is False
+
+
+# Fase 4 (spec 003-masters-artists): the new layer checks reuse the
+# same `_check_unique` / `_check_unique_sql` helpers — already covered
+# by the parity tests above (master_id / artist_id are just different
+# column names). The cross-table helper has no in-memory sibling but
+# carries a unit test below.
+
+def test_check_sum_release_count_equals_pass_and_fail(tmp_path: Path):
+    """Standalone SQL-only cross-table consistency check (FR-015)."""
+    from discogs_etl.io import schemas
+    from discogs_etl.io.parquet_writer import BatchedParquetWriter
+    from discogs_etl.quality.checks import _check_sum_release_count_equals
+
+    common = dict(
+        name="master_fact.sum_release_count_equals_clean_releases_with_master_id",
+        layer="analytics", table_name="master_fact",
+    )
+
+    # Build minimal parquet pair where SUM = COUNT.
+    mf_path = tmp_path / "mf_pass.parquet"
+    cr_path = tmp_path / "cr_pass.parquet"
+    with BatchedParquetWriter(mf_path, schemas.MASTER_FACT, batch_size=100) as w:
+        for mid, rc in [(1, 2), (2, 1), (3, 0)]:  # SUM = 3
+            w.write({
+                "master_id": mid, "title": f"M{mid}", "main_release_id": None,
+                "year": None, "decade": None, "release_count": rc,
+                "earliest_year": None, "latest_year": None,
+                "primary_genre": None, "primary_style": None, "run_id": "t",
+            })
+    with BatchedParquetWriter(cr_path, schemas.CLEAN_RELEASES, batch_size=100) as w:
+        # 3 releases with master_id NOT NULL + 0 with NULL → COUNT = 3.
+        for rid, mid in [(10, 1), (11, 1), (12, 2)]:
+            w.write({
+                "release_id": rid, "title": f"R{rid}", "country": "UK",
+                "released_raw": "2000", "year": 2000, "month": None, "day": None,
+                "released_date": None, "released_date_precision": "year",
+                "decade": 2000, "data_quality": "Correct", "master_id": mid,
+                "master_is_main_release": False,
+                "track_count": 0, "artist_count": 1, "label_count": 1,
+                "genre_count": 1, "style_count": 1, "format_count": 1,
+                "has_videos": False, "has_extraartists": False, "run_id": "t",
+            })
+    r = _check_sum_release_count_equals(mf_path, cr_path, **common)
+    assert r.passed is True
+    assert r.severity == "critical"
+
+    # Inconsistent case: SUM(2) != COUNT(3).
+    mf_bad = tmp_path / "mf_bad.parquet"
+    with BatchedParquetWriter(mf_bad, schemas.MASTER_FACT, batch_size=100) as w:
+        for mid, rc in [(1, 1), (2, 1)]:  # SUM = 2
+            w.write({
+                "master_id": mid, "title": f"M{mid}", "main_release_id": None,
+                "year": None, "decade": None, "release_count": rc,
+                "earliest_year": None, "latest_year": None,
+                "primary_genre": None, "primary_style": None, "run_id": "t",
+            })
+    r = _check_sum_release_count_equals(mf_bad, cr_path, **common)
+    assert r.passed is False
+    assert "SUM" in (r.details or "")

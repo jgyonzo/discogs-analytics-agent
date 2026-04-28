@@ -20,7 +20,7 @@ from typing import Any, BinaryIO, Iterator
 
 from lxml import etree
 
-from ..io.input import open_releases_input
+from ..io.input import resolve_xml_input
 
 
 @dataclass
@@ -51,7 +51,7 @@ class ReleaseStream:
     def _iterate(self) -> Iterator[dict[str, Any]]:
         parsed_at = datetime.now(timezone.utc)
         last_release_id: int | None = None
-        file_obj = _resolve_input(Path(self.path))
+        file_obj = resolve_xml_input(Path(self.path), "releases")
 
         try:
             context = etree.iterparse(file_obj, events=("end",), tag="release")
@@ -85,27 +85,6 @@ class ReleaseStream:
                 file_obj.close()
             except Exception:  # noqa: BLE001 — close is best-effort
                 pass
-
-
-def _resolve_input(path: Path) -> BinaryIO:
-    """Resolve a parser input path into an open binary file-object.
-
-    Accepts:
-    - a directory containing ``releases.xml`` or ``releases.xml.gz`` →
-      delegates to :func:`open_releases_input`;
-    - a file path that exists → opens directly (gzip-decoded if ``.gz``);
-    - a non-existent path whose parent directory exists →
-      delegates to :func:`open_releases_input` against the parent.
-    """
-    if path.is_dir():
-        return open_releases_input(path).file_obj
-    if path.is_file():
-        if path.suffix == ".gz":
-            return gzip.GzipFile(filename=str(path), mode="rb")
-        return open(path, "rb")
-    if path.parent.is_dir():
-        return open_releases_input(path.parent).file_obj
-    raise FileNotFoundError(f"no releases input at {path}")
 
 
 def iter_releases(

@@ -1,0 +1,4 @@
+# Keep this directory tracked, but ignore everything in it.
+# Drop full Discogs XML dumps here for the complete-pipeline runs.
+*
+!.gitignore

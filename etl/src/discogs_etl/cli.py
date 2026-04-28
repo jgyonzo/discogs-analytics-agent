@@ -14,12 +14,17 @@ from .io.file_utils import make_run_id
 from .pipeline.context import RunConfig, RunContext, configure_logging
 from .pipeline.manifest import Manifest
 from .pipeline.runner import run_pipeline
+from .steps.build_master_fact import BuildMasterFactStep
 from .steps.build_release_fact import BuildReleaseFactStep
 from .steps.build_release_format_summary import BuildReleaseFormatSummaryStep
 from .steps.finalize_manifest import FinalizeManifestStep
 from .steps.init_run import InitRunStep
+from .steps.normalize_artists import NormalizeArtistsStep
+from .steps.normalize_masters import NormalizeMastersStep
 from .steps.normalize_release_entities import NormalizeReleaseEntitiesStep
 from .steps.normalize_releases import NormalizeReleasesStep
+from .steps.parse_artists import ParseArtistsStep
+from .steps.parse_masters import ParseMastersStep
 from .steps.parse_releases import ParseReleasesStep
 from .steps.prepare_sources import PrepareSourcesStep
 from .steps.publish_duckdb import PublishDuckdbStep
@@ -30,10 +35,15 @@ _CLI_TO_INTERNAL = {
     "init-run": "init_run",
     "prepare-sources": "prepare_sources",
     "parse-releases": "parse_releases",
+    "parse-masters": "parse_masters",
+    "parse-artists": "parse_artists",
     "normalize-releases": "normalize_releases",
     "normalize-release-entities": "normalize_release_entities",
+    "normalize-masters": "normalize_masters",
+    "normalize-artists": "normalize_artists",
     "build-release-format-summary": "build_release_format_summary",
     "build-release-fact": "build_release_fact",
+    "build-master-fact": "build_master_fact",
     "quality-checks": "quality_checks",
     "publish-duckdb": "publish_duckdb",
     "finalize-manifest": "finalize_manifest",
@@ -45,10 +55,15 @@ def _build_steps(*, limit_releases: int | None) -> list:
         InitRunStep(),
         PrepareSourcesStep(),
         ParseReleasesStep(limit_releases=limit_releases),
+        ParseMastersStep(),
+        ParseArtistsStep(),
         NormalizeReleasesStep(),
         NormalizeReleaseEntitiesStep(),
+        NormalizeMastersStep(),
+        NormalizeArtistsStep(),
         BuildReleaseFormatSummaryStep(),
         BuildReleaseFactStep(),
+        BuildMasterFactStep(),
         QualityChecksStep(),
         PublishDuckdbStep(),
         FinalizeManifestStep(),

@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<masters>
+
+  <!-- 9001: main_release resolves to release 1001 in the curated releases fixture.
+       Expected master_fact: primary_genre=Electronic, primary_style="Deep House". -->
+  <master id="9001">
+    <main_release>1001</main_release>
+    <title>Master Alpha</title>
+    <year>1999</year>
+    <data_quality>Correct</data_quality>
+  </master>
+
+  <!-- 9002: main_release resolves to release 1002.
+       Expected master_fact: primary_genre=Electronic, primary_style="Ambient". -->
+  <master id="9002">
+    <main_release>1002</main_release>
+    <title>Master Bravo</title>
+    <year>1998</year>
+    <data_quality>Correct</data_quality>
+  </master>
+
+  <!-- 9003: main_release resolves to release 1003 — but release 1003 has NO styles
+       (style_order=0, style=NULL in release_fact). Expected master_fact:
+       primary_genre=Rock (release-grain via the genre LEFT JOIN),
+       primary_style=NULL (no style_order=1 row to match). -->
+  <master id="9003">
+    <main_release>1003</main_release>
+    <title>Master Charlie</title>
+    <year>1985</year>
+    <data_quality>Correct</data_quality>
+  </master>
+
+  <!-- 9998: main_release_id 8888 does NOT correspond to any release in the
+       curated releases fixture. Expected master_fact: row exists with the
+       master metadata; primary_genre=NULL; primary_style=NULL.
+       Triggers build_master_fact.main_release_unresolved warning. -->
+  <master id="9998">
+    <main_release>8888</main_release>
+    <title>Master Phantom (unresolved main_release)</title>
+    <year>2000</year>
+    <data_quality>Needs Vote</data_quality>
+  </master>
+
+  <!-- 9999: orphan-from-masters-side. No <main_release>; no release in the
+       curated fixture references master_id=9999. Expected master_fact:
+       row exists; release_count=0; earliest_year=NULL; latest_year=NULL;
+       primary_genre=NULL; primary_style=NULL. -->
+  <master id="9999">
+    <title>Master Lonely (orphan, no main_release, no releases)</title>
+    <year>1995</year>
+    <data_quality>Correct</data_quality>
+  </master>
+
+  <!-- Implicit: master_ids 9004, 9005, 9006, 9007 are referenced by
+       releases_sample.xml but intentionally NOT included here.
+       Expected master_fact: 4 orphan-from-releases rows with NULL metadata
+       (title, main_release_id, year, decade, primary_*) and release_count=1.
+       Triggers build_master_fact.unknown_master_ids warning. -->
+
+</masters>
