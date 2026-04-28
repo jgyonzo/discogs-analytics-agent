@@ -43,6 +43,7 @@ These names are reserved and consistent across the codebase:
 | `prepare_sources.gz_and_plain_present` | prepare_sources | Both `releases.xml` and `releases.xml.gz` exist in the snapshot dir; uncompressed wins (FR-010). |
 | `prepare_sources.gz_input` | prepare_sources | The chosen input is gzipped — informational, lets the developer confirm which path was taken. |
 | `runtime.peak_rss_exceeds_cap` | runner / finalize_manifest | A step's `peak_rss_bytes` exceeded `limits.peak_rss_cap_gib * 2^30` (FR-013). Informational, not a failure. |
+| `normalize_release_entities.format_quantity_overflow` | normalize_release_entities | A `<format qty>` attribute parsed as an integer outside int64 range (FR-006); cell stored as NULL. `details` includes the count. *(Retroactively added after the April 2026 full-dump run; fixed in commit `2e6461a`.)* |
 
 The Fase 1 warnings (`parse_releases.dropped_no_release_id`,
 `normalize_release_entities.unmapped_format_names`,

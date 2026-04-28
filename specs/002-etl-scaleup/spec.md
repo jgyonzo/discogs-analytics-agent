@@ -200,6 +200,16 @@ warnings).
 - The same `format name` appears with a different case
   (`"VINYL"`, `"Vinyl"`). → Mapping is case-insensitive (existing
   behavior).
+- An integer attribute (e.g., `<format qty="...">`) parses as a
+  Python int but exceeds the destination column's pyarrow type
+  width — real Discogs data contains both legitimate-but-large
+  values (5 × 10⁹, 10¹⁰) and clear typos (60-digit integer
+  literals). → Values that fit in int64 are stored as-is; values
+  that exceed even int64 are stored as NULL with a manifest
+  warning (`normalize_release_entities.format_quantity_overflow`).
+  The run continues. *(Retroactively added after a real-data
+  full-dump surfaced this case during Fase 4 implementation;
+  fixed in commit `2e6461a`.)*
 
 #### Scale (Fase 3)
 
@@ -247,6 +257,18 @@ warnings).
 - **FR-005**: Any `<release>` element with an empty or malformed
   `id` attribute MUST be dropped at staging (existing behavior),
   with the count of dropped rows surfaced as a manifest warning.
+- **FR-006**: When a numeric staging attribute (notably
+  `format_qty_raw`) parses as an integer too large for the
+  destination column's pyarrow type, the pipeline MUST persist
+  the cell as NULL and surface the count via a manifest warning
+  (`normalize_release_entities.format_quantity_overflow` for the
+  `format_quantity` case). The run MUST NOT crash. The schema
+  choice MAY be widened (e.g., int32 → int64) when the widening
+  is strictly permissive — every previously-valid value still
+  fits — so FR-018 / FR-021 (no breaking changes to existing
+  published tables) remain satisfied. *(Retroactively added
+  after a real-data full-dump surfaced this case during Fase 4
+  implementation; fixed in commit `2e6461a`.)*
 
 #### Laptop-scale execution (Fase 3)
 
