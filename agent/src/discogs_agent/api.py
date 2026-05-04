@@ -1,16 +1,22 @@
-"""FastAPI app shell. Phase 2 = stub /health; Phase 3 adds /query and
-/artifacts; Phase 4 (US2) replaces the stub /health with the real
-multi-component check.
+"""FastAPI app shell.
+
+The /health endpoint must remain reachable even when the published
+DuckDB or Postgres are unavailable — that is how the operator
+discovers the failure (FR-030 + spec edge cases). Lifespan therefore
+does NOT call ``settings.validate_runtime()``; per-component
+reachability is reported by ``/health`` instead.
 """
 
 from __future__ import annotations
 
-from contextlib import asynccontextmanager
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 
 from discogs_agent.config import settings
+from discogs_agent.health import build_health_payload
 from discogs_agent.observability.logging import configure_logging, get_logger
 
 logger = get_logger(__name__)
@@ -19,8 +25,6 @@ logger = get_logger(__name__)
 @asynccontextmanager
 async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     configure_logging(settings.LOG_LEVEL)
-    # Phase 2: skip validate_runtime so the test harness can boot
-    # against a tmp DuckDB. Phase 4 will tighten this.
     logger.info("agent_starting", model_provider="openai", version=settings.AGENT_VERSION)
     yield
     logger.info("agent_stopping")
@@ -30,9 +34,9 @@ app = FastAPI(title="Discogs Conversational Analytics Agent", lifespan=_lifespan
 
 
 @app.get("/health")
-def health() -> dict[str, object]:
-    """Phase 2 stub — replaced by the real multi-component check in US2."""
-    return {"status": "ok"}
+def health() -> JSONResponse:
+    payload, http_status = build_health_payload()
+    return JSONResponse(payload, status_code=http_status)
 
 
 # /query and /artifacts routes are registered in api_query.py and

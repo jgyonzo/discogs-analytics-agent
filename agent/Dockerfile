@@ -18,7 +18,9 @@ RUN pip install -e '/app/agent[test]'
 
 EXPOSE 8000
 
+ARG AGENT_VERSION=dev
 ENV ANALYTICS_DUCKDB_PATH=/app/data/published/duckdb/discogs.duckdb \
-    ARTIFACTS_DIR=/app/artifacts
+    ARTIFACTS_DIR=/app/artifacts \
+    AGENT_VERSION=${AGENT_VERSION}
 
 ENTRYPOINT ["sh", "-c", "alembic -c /app/agent/src/discogs_agent/persistence/alembic.ini upgrade head && exec uvicorn discogs_agent.api:app --host 0.0.0.0 --port 8000"]

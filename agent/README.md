@@ -44,22 +44,68 @@ cp .env.example .env
 #   ./data/published/duckdb/discogs.duckdb
 # (Produce it via the ETL — see ../etl/README.md)
 
-# 2. Bring up the stack.
+# 2. Bring up the stack (US2).
 docker compose up --build
 
 # 3. Wait for health to flip green.
 until curl -fs http://localhost:8000/health | jq -e '.status == "ok"' > /dev/null
 do sleep 2
 done
+```
 
-# 4. Ask a question.
+`GET /health` reports the DuckDB and Postgres reachability
+separately (200 = both ok, 503 = either failing):
+
+```json
+{
+  "status": "ok",
+  "checks": {
+    "duckdb":   {"ok": true, "tables_present": ["release_fact","release_unique_view","release_artist_bridge","release_label_bridge","master_fact"], "has_master_fact": true, "error": null, "path": "/app/data/published/duckdb/discogs.duckdb"},
+    "postgres": {"ok": true, "error": null}
+  },
+  "version": "<git sha or 'dev'>",
+  "model_provider": "openai"
+}
+```
+
+`AGENT_VERSION` is a build arg; bake the SHA in via
+`AGENT_VERSION=$(git rev-parse --short HEAD) docker compose up --build`.
+
+```bash
+# 4. Ask a question (the headline demo — SC-002 anchor).
 curl -s -X POST http://localhost:8000/query \
   -H 'Content-Type: application/json' \
   -d '{"message": "Show the evolution of Techno releases over time"}' | jq .
 ```
 
 The response includes a `chart_artifact.url`; open it in a
-browser to see the Plotly chart.
+browser to see the Plotly chart. The chart file lives on the
+host at `./artifacts/<thread_id>/<run_id>/<chart>.html`.
+
+### Persistence across restart (SC-009 anchor)
+
+Postgres lives in the named volume `postgres_data` and survives
+a stop/start cycle:
+
+```bash
+RUN_ID=<paste run_id from the /query response>
+
+docker compose down
+docker compose up -d
+until curl -fs http://localhost:8000/health | jq -e '.status == "ok"' > /dev/null
+do sleep 2
+done
+
+# (US3) The previously created run is still queryable:
+curl -s "http://localhost:8000/runs/$RUN_ID" | jq '.run_id'
+```
+
+### Tear down
+
+```bash
+docker compose down              # stop containers, keep volumes
+docker compose down --volumes    # also drop postgres_data + artifacts
+```
 
 ---
 
@@ -109,10 +155,21 @@ pip install -e '.[test,dev]'
 pytest tests/unit/ tests/graph/
 ```
 
-Integration tests need testcontainers (real Postgres):
+Integration tests pull testcontainers (real Postgres) for the
+checks that need it; the rest fall back to file-backed SQLite:
 
 ```bash
-AGENT_USE_POSTGRES=1 pytest tests/integration/
+pytest tests/integration/
+```
+
+Set `AGENT_USE_POSTGRES=1` to also run the Postgres variants of
+the persistence-durability test (T082).
+
+Docker compose smoke test — gated, builds the image and burns
+real OpenAI credit:
+
+```bash
+AGENT_DOCKER_SMOKE=1 pytest tests/integration/test_docker_smoke.py
 ```
 
 Golden tests (LLM-stub by default):
