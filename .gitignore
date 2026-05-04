@@ -20,3 +20,14 @@ etl/tests/fixtures/releases_sample_big_raw.xml
 dist/
 build/
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Agent component runtime state (V1 chart artifacts; bind-mounted into the container)
+artifacts/
+
+# Agent component build / venv layers
+agent/.venv/
+agent/dist/
+agent/build/
+agent/*.egg-info/

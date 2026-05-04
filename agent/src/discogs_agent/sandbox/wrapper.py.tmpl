@@ -1,0 +1,47 @@
+"""Sandbox harness. Spawned as `python -I -B -S -c <THIS>` with the
+user-generated code path passed as argv[1]. Captures the script's
+RESULT (or exception) and prints it between known markers so the
+parent can extract it from stdout.
+"""
+
+import json
+import runpy
+import sys
+import traceback
+
+BEGIN = "__AGENT_RESULT_BEGIN__"
+END = "__AGENT_RESULT_END__"
+
+
+def main() -> None:
+    if len(sys.argv) < 2:
+        print(BEGIN + json.dumps({"_error": "no_script_path"}) + END)
+        return
+
+    script = sys.argv[1]
+    try:
+        ns = runpy.run_path(script)
+        result = ns.get("RESULT")
+        if result is None:
+            payload = {"_error": "no_result", "_message": "RESULT not defined"}
+        else:
+            payload = {"result": result}
+    except Exception as exc:
+        payload = {
+            "_error": type(exc).__name__,
+            "_message": str(exc),
+            "_traceback": traceback.format_exc(),
+        }
+
+    # Best-effort JSON encoding.
+    try:
+        encoded = json.dumps(payload, default=str)
+    except Exception as exc:
+        encoded = json.dumps({"_error": "encode_failed", "_message": str(exc)})
+
+    sys.stdout.write(BEGIN + encoded + END + "\n")
+    sys.stdout.flush()
+
+
+if __name__ == "__main__":
+    main()
