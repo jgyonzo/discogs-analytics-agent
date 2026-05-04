@@ -162,6 +162,58 @@ emits a higher-severity warning and proceeds with the
 truncated set (graceful degradation; the LLM still gets *some*
 sample values).
 
+## Consumer rules
+
+*Added 2026-05-04 as part of `006-bugfix-postmortem`. Codifies
+Constitution VII.b — Prompt-authoring discipline. The original
+T017–T020 wording in `tasks.md` ("swap the placeholder, keep
+all other prompt structure intact") preserved redundant prose
+in `router.md` that contradicted the rendered block when
+`master_fact` became optional; this section makes the rule
+explicit so future prompt edits cannot recreate the drift.*
+
+Every prompt template that needs catalog schema information
+MUST embed it **only** via the dynamically-rendered
+`{schema_context_block}` placeholder produced by
+`render_schema_block(...)`. The rendered block is the canonical,
+single source of truth for:
+
+- which tables exist and at what grain;
+- which columns each table has;
+- sample distinct values for low-cardinality columns;
+- the domain glossary (decade-vs-year, style-vs-genre, ...);
+- whether `master_fact` is present in the current snapshot.
+
+Prompts MUST NOT contain static prose that *describes* any of
+the above. Specifically, the following are forbidden in prompt
+files:
+
+- enumerations of available data ("the available data is
+  RELEASE-LEVEL", "we have counts, styles, formats, ...") —
+  these duplicate the table list inside the rendered block;
+- references to specific table grains in prose (e.g.
+  "release_fact has grain release × style") — these belong in
+  the `table_grain` map inside `render_schema_block`;
+- references to specific values that may exist or not exist
+  ("Techno is a style on release_fact") — these are surfaced
+  by sample values when present.
+
+What prompts MAY (and should) contain:
+- invariant *negative* lists — categories that are NEVER
+  present in any catalog snapshot (prices, ratings, user
+  counts, reviews). These do not depend on the snapshot and
+  cannot drift.
+- routing rules and output-shape contracts (JSON schemas,
+  expected keys);
+- task-specific instructions tied to the prompt's role
+  (router classification taxonomy, code-generator template,
+  etc.).
+
+Reviewers MUST reject prompt edits that re-introduce static
+schema prose, even if the prose happens to be correct on the
+day it was written. The "happens to be correct" property does
+not survive the next ETL change that adds or removes a table.
+
 ## Backwards compatibility
 
 All consumers that read only `tables` and `has_master_fact`

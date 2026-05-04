@@ -178,6 +178,17 @@ class CostOutput(BaseModel):
   `rate_card_version = "unknown"`. A warning is logged.
 - Writes a row to `agent_model_usage`.
 
+**Caller contract** (Constitution Principle VII.a — Configuration
+sources): the `model_name` argument MUST reflect the model the calling
+node *actually* invoked. It MUST be sourced from `settings.CHEAP_MODEL`
+/ `settings.STRONG_MODEL`, or from `state["route"].selected_model`.
+Hardcoded model literals in the call site are forbidden — they cause
+the cost-log row to lie when the operator overrides a model in `.env`.
+Nodes that always run on a fixed tier (e.g. `router`,
+`response_synthesizer`) pass `settings.CHEAP_MODEL`; nodes whose tier
+depends on routing (e.g. `query_understanding`, `code_generator`) pass
+`state["route"].selected_model`.
+
 ---
 
 ### 2.7 `artifact_store`

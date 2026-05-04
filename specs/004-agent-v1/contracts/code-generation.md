@@ -32,7 +32,11 @@ DB_PATH = os.environ["ANALYTICS_DUCKDB_PATH"]
 ARTIFACT_DIR = Path(os.environ["ARTIFACT_DIR"])
 ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
 
-con = duckdb.connect(DB_PATH, read_only=True)
+con = duckdb.connect(
+    DB_PATH,
+    read_only=True,
+    config={"temp_directory": "/tmp/duckdb"},
+)
 
 sql = """
 SELECT decade, COUNT(*) AS releases
@@ -69,7 +73,14 @@ The generated code MUST:
    image are intentional.
 2. Read `ANALYTICS_DUCKDB_PATH` from the environment.
 3. Read `ARTIFACT_DIR` from the environment and `mkdir` it.
-4. Open DuckDB with `read_only=True`.
+4. Open DuckDB with `read_only=True` AND
+   `config={"temp_directory": "/tmp/duckdb"}`. The published DuckDB is
+   bind-mounted `:ro` (see Constitution VII.c and `research.md` R-04),
+   so DuckDB's default spill location adjacent to the file is unwritable.
+   The `/tmp/duckdb` path is provided as a tmpfs mount on the
+   `agent-api` service. Both kwargs MUST be present together; passing
+   `read_only=True` without the temp_directory config will fail with
+   `IO Error: Read-only file system` on any GROUP BY or sort that spills.
 5. Define a single `sql = """..."""` string (or `query =
    """..."""`). The safety checker extracts from these
    names — see [`sql-safety.md` §3.1](./sql-safety.md).

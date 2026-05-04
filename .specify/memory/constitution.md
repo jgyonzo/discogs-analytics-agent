@@ -1,42 +1,32 @@
 <!--
 SYNC IMPACT REPORT
-- Version change: 1.0.0 → 1.1.0
-- Bump rationale: Added Principle VI ("Two Components, One Contract") to
-  enshrine that this repo hosts both the local ETL and a future containerized
-  analytics agent app. Expanded Technical Constraints with components &
-  runtime targets, boundary artifact, secrets handling, and repository
-  layout. Updated workflow/governance references from "Principles I–V" to
-  "Principles I–VI". MINOR per the constitution's own policy (new principle
-  + material expansion; no existing principle redefined or removed).
+- Version change: 1.1.0 → 1.2.0
+- Bump rationale: Added Principle VII ("Implementation Discipline") with
+  three sub-rules — (a) Configuration sources, (b) Prompt-authoring
+  discipline, (c) Read-only runtime mechanics. Each codifies a recurring
+  silent-failure mode that surfaced during 005-agent-schema-context and
+  was post-mortemed in 006-bugfix-postmortem. Updated workflow/governance
+  references from "Principles I–VII" to "Principles I–VIII". MINOR per the
+  constitution's own policy (new principle added; no existing principle
+  redefined or removed).
 - Modified principles:
-  * (none redefined; Principle V wording unchanged. Principle VI added.)
+  * (none redefined. Principle VII added.)
 - Added sections:
-  * Core Principles → VI. Two Components, One Contract
-  * Technical Constraints → Components & runtime targets, Boundary artifact,
-    Secrets, Repository layout (existing items retained, expanded)
+  * Core Principles → VII. Implementation Discipline
 - Removed sections: none
-- Deferred to a later amendment (driven by the agent's own initial spec):
-  * Specific AWS service for the agent (ECS/Fargate/App Runner/EC2 — TBD)
-  * Agent framework, model choice, tool surface, and code-execution sandboxing
-  * Concrete top-level directory names (etl/, agent/ — TBD at first specify)
 - Templates requiring updates:
-  * .specify/templates/plan-template.md          ✅ aligned (Constitution Check is
-    a generic placeholder resolved per-feature against this file; no static edit
-    required)
-  * .specify/templates/spec-template.md          ✅ aligned (no principle-driven
-    structural changes required)
-  * .specify/templates/tasks-template.md         ✅ aligned (task categorization
-    neutral; component-scoped tasks expressible under existing phases)
+  * .specify/templates/plan-template.md          ✅ aligned (Constitution
+    Check is a generic placeholder resolved per-feature)
+  * .specify/templates/spec-template.md          ✅ aligned
+  * .specify/templates/tasks-template.md         ✅ aligned
   * .specify/templates/checklist-template.md     ✅ aligned
-  * CLAUDE.md                                    ✅ aligned (delegates to current
-    plan; no principle references to update)
-  * README.md                                    ⚠ pending (currently the GitLab
-    boilerplate; should eventually summarize project + reference this
-    constitution, but not blocking)
-- Prior history: 1.0.0 (2026-04-25) — first ratified constitution; replaced
-  template placeholders with concrete Principles I–V plus Technical
-  Constraints, Development Workflow & Quality Gates, and Governance.
-- Follow-up TODOs: none deferred beyond the explicit list above.
+  * CLAUDE.md                                    ✅ aligned
+- Prior history:
+  * 1.1.0 (2026-04-25) — added Principle VI (Two Components, One Contract)
+    and expanded Technical Constraints.
+  * 1.0.0 (2026-04-25) — first ratified constitution; Principles I–V plus
+    Technical Constraints, Development Workflow & Quality Gates, Governance.
+- Follow-up TODOs: none.
 -->
 
 # Discogs ETL & Analytics Agent Constitution
@@ -156,6 +146,53 @@ deploy cycles that have no reason to be coupled. Treating the published
 DuckDB as the only contact surface keeps both components free to evolve
 within their own envelope.
 
+### VII. Implementation Discipline
+
+Three correctness disciplines apply to every code path in the agent
+component. Each codifies a recurring silent-failure mode and was added
+after a documented incident (see `specs/006-bugfix-postmortem/`).
+
+**(a) Configuration sources.** Model identifiers, file paths, timeouts,
+retry counts, token budgets, and feature flags MUST be sourced from
+`settings` (env-driven configuration loaded via `pydantic-settings`) or
+graph state (LangGraph state propagated through nodes). Hardcoded
+literals for these values are forbidden. The failure mode this prevents:
+metadata fields drift away from the value the runtime actually uses
+(e.g. a `cost_logger` row with `model_name="gpt-4o-mini"` baked in,
+while the underlying call already follows `settings.CHEAP_MODEL` and
+the operator overrode that env var).
+
+**(b) Prompt-authoring discipline.** Prompt templates MUST embed catalog
+schema information — table names, grains, columns, sample values, the
+domain glossary — only via the dynamically-rendered
+`{schema_context_block}` placeholder produced by `read_schema_context()`.
+Static prose inside a prompt that *describes* what tables exist, what
+grain they have, what values they contain, or what the catalog does or
+does not include is forbidden. The failure mode this prevents: a prompt
+file claims "the available data is RELEASE-LEVEL" while the rendered
+block already lists `master_fact` with master grain — the LLM gets a
+contradictory mix and the prompt drifts whenever the published schema
+evolves.
+
+**(c) Read-only runtime mechanics.** When a runtime constraint declares
+a resource read-only (e.g. the published DuckDB mounted `:ro`,
+filesystem jails, immutable rootfs), the constraint's *consequences*
+MUST be documented alongside it: which operations the runtime would
+otherwise perform that require write access, and how each is mitigated.
+Declaring "read-only" without surfacing its mechanics leaves the next
+code path to discover the failure mode by accident. The failure mode
+this prevents: DuckDB's default spill location is `<dbfile>.tmp/`
+adjacent to the database file; on a `:ro` mount this fails with
+`Read-only file system`, and any GROUP BY / sort / hash-join that
+overflows memory silently degrades.
+
+**Rationale:** All three disciplines guard against silent failures —
+wrong model in the cost ledger, wrong genre in prompt prose, blank
+charts from suppressed spill errors. Each rule has a named past
+incident; the discipline keeps the failure mode from recurring on the
+next feature. These are correctness properties of the agent runtime,
+not stylistic preferences.
+
 ## Technical Constraints
 
 ### Components & runtime targets
@@ -231,7 +268,7 @@ within their own envelope.
   `/speckit-tasks` → `/speckit-implement`. Each phase produces artifacts
   under `specs/<feature>/` and is committed before the next phase.
 - **Plan gate:** Every plan MUST include a Constitution Check section that
-  evaluates the proposed work against Principles I–VI and the constraints
+  evaluates the proposed work against Principles I–VII and the constraints
   above. Plans MUST also state which component(s) the work touches —
   ETL, agent, or both — so reviewers can apply the right constraints.
   Violations MUST be either eliminated or recorded in the plan's
@@ -270,7 +307,7 @@ affects. Amendments take effect when merged into `main`.
 
 **Compliance review:** Plans and PRs that introduce or modify pipeline or
 agent behavior MUST cite the principles they engage with. Reviewers MUST
-reject changes that violate Principles I–VI without an accepted amendment
+reject changes that violate Principles I–VII without an accepted amendment
 or a recorded, justified exception in Complexity Tracking. Recurring
 exceptions in the same area are a signal the principle should be amended,
 not bypassed.
@@ -280,4 +317,4 @@ lives in `CLAUDE.md` and the active feature plan under `specs/<feature>/`.
 Those documents MUST be consistent with this constitution; on conflict, this
 constitution prevails.
 
-**Version**: 1.1.0 | **Ratified**: 2026-04-25 | **Last Amended**: 2026-04-25
+**Version**: 1.2.0 | **Ratified**: 2026-04-25 | **Last Amended**: 2026-05-04

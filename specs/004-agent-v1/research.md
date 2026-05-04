@@ -538,6 +538,60 @@ from FastAPI's startup hook that fails fast if
 
 ---
 
+## R-14: DuckDB read-only mount mechanics & spill
+
+*Added 2026-05-04 as part of `006-bugfix-postmortem`. The
+existing R-02 declared the read-only constraint but did not
+surface its DuckDB-internal consequences; that gap caused the
+agent's schema-context sample-value queries to fail silently in
+production. Codifies Constitution VII.c.*
+
+**Decision**: Both the agent's own DuckDB connections (e.g.
+`read_schema_context()` in `duckdb_layer/schema.py`) and
+LLM-generated sandboxed code MUST open the DuckDB with
+**both** `read_only=True` AND
+`config={"temp_directory": "/tmp/duckdb"}`. The `/tmp/duckdb`
+path is provided as a tmpfs mount on the `agent-api` Docker
+service.
+
+**Mechanics**:
+- DuckDB's default spill location is `<dbfile>.tmp/` adjacent
+  to the database file. Hash GROUP BY, sort, and hash-join
+  operators that overflow memory write intermediate results
+  here.
+- Per R-02 the published DuckDB volume is bind-mounted `:ro`,
+  so DuckDB's `mkdir(<dbfile>.tmp)` fails with `IO Error: Read-only
+  file system`. The error is caught silently in
+  `_collect_sample_values` (logs `sample_values_query_failed`
+  and continues) and as a generic exception in user-code
+  sandboxes.
+- Setting `temp_directory` at connect time (NOT via PRAGMA)
+  redirects spill writes to a writable path. Connect-time
+  config is required because the SQL safety checker forbids
+  PRAGMA in generated code (see `sql-safety.md` rule
+  `ddl_dml`).
+
+**Rationale**:
+- Pure spec gap before this entry: declaring "read-only is
+  belt-and-braces security" left the team unaware that
+  DuckDB's correctness path needs a writable scratch
+  directory.
+- `/tmp/duckdb` over the host bind-mount: tmpfs is fast,
+  ephemeral, and unprivileged; no host-side housekeeping
+  needed.
+
+**Alternatives considered**:
+- *Bypass with `PRAGMA temp_directory = ...` inside generated
+  code*: trips the safety checker's `ddl_dml` rule. Rejected.
+- *Write spill into `ARTIFACT_DIR`*: bleeds intermediate
+  results into the per-run artifact directory, polluting the
+  artifact store. Rejected.
+- *Ignore spill and require generated SQL to fit in memory*:
+  brittle; large GROUP BYs are exactly the queries the agent
+  is expected to run. Rejected.
+
+---
+
 ## Summary of resolved unknowns
 
 | Unknown from plan Technical Context | Resolved in |
@@ -554,6 +608,7 @@ from FastAPI's startup hook that fails fast if
 | Artifact serving | R-11 |
 | Seed DuckDB strategy | R-12 |
 | Config defaults | R-13 |
+| DuckDB read-only mount mechanics & spill | R-14 |
 
 No `NEEDS CLARIFICATION` markers remain. Phase 1 contracts
 encode these decisions.
