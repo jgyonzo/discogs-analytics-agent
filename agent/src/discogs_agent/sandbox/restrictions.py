@@ -12,8 +12,18 @@ import resource
 from collections.abc import Callable
 
 # Bytes — caps the size of any single file the subprocess can write.
-# 64 MiB comfortably accommodates a Plotly inline-JS HTML.
-RLIMIT_FSIZE_BYTES = 64 * 1024 * 1024
+# RLIMIT_FSIZE is process-wide on Linux, so this single ceiling is
+# shared between the chart artifact and DuckDB's spill files at
+# `/tmp/duckdb/duckdb_temp_storage_*.tmp`. The previous 64 MiB value
+# was sized for the chart HTML alone and tripped EFBIG on every
+# release-grain GROUP BY against the published catalog (named
+# incident: 007-sandbox-fsize-budget). 2 GiB sits at ~2-4× the
+# worst-case full-catalog spill estimate and comfortably below the
+# host tmpfs default — see contract §3.1.1 and 007/research.md R-01..R-03
+# for the full sizing rationale. The cwd jail (per-run artifact dir)
+# remains the *primary* write-confinement control; this rlimit is
+# the *secondary* runaway-write backstop.
+RLIMIT_FSIZE_BYTES = 2 * 1024 * 1024 * 1024
 
 
 def make_preexec(timeout_seconds: int) -> Callable[[], None]:
