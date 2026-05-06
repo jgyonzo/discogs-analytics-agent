@@ -10,8 +10,7 @@ questions over it.
   publishes a single DuckDB at
   `data/published/duckdb/discogs.duckdb`.
 - **`agent/`** — containerized FastAPI + LangGraph service. Answers
-  natural-language questions over the published DuckDB by generating
-  + executing read-only Python/SQL inside a sandbox, then rendering a
+  natural-language questions over the published DuckDB by generating and executing read-only Python/SQL inside a sandbox, then rendering a
   Plotly chart.
 
 The two halves are coupled **only** through the published DuckDB and
