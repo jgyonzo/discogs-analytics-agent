@@ -254,22 +254,22 @@ header + `AGENT_ADMIN_TOKEN` matched, those are populated.
 
 ### Admin auth + DTOs
 
-- [ ] T085 [P] [US3] Implement `agent/src/discogs_agent/api_admin.py` (or merge into `api.py`): a FastAPI dependency `is_admin(request)` that returns `True` only when `settings.AGENT_ADMIN_TOKEN` is non-empty AND the request carries `X-Agent-Admin: <token>` matching it. Default deny.
-- [ ] T086 [P] [US3] Implement Pydantic response DTOs for `GET /threads/{id}` and `GET /runs/{id}` per [contracts/api.md §2 / §3](./contracts/api.md), with optional `generated_code` and `errors[].traceback` fields populated only by the admin-aware serializer.
+- [X] T085 [P] [US3] Implement `agent/src/discogs_agent/api_admin.py` (or merge into `api.py`): a FastAPI dependency `is_admin(request)` that returns `True` only when `settings.AGENT_ADMIN_TOKEN` is non-empty AND the request carries `X-Agent-Admin: <token>` matching it. Default deny.
+- [X] T086 [P] [US3] Implement Pydantic response DTOs for `GET /threads/{id}` and `GET /runs/{id}` per [contracts/api.md §2 / §3](./contracts/api.md), with optional `generated_code` and `errors[].traceback` fields populated only by the admin-aware serializer.
 
 ### Endpoints
 
-- [ ] T087 [US3] Implement `GET /runs/{run_id}` in `api.py`: joins `agent_runs` + `agent_tool_calls` + `agent_model_usage` + `agent_errors` + `agent_artifacts`; serializes per the DTO; includes `generated_code` and tracebacks only when `is_admin` is `True`. 404 on miss.
-- [ ] T088 [US3] Implement `GET /threads/{thread_id}` in `api.py`: returns thread metadata + paginated runs (`limit`, `offset` query params) per [contracts/api.md §2](./contracts/api.md). Each run's `primary_artifact` is the earliest `agent_artifact` for that run (single LATERAL or per-run subquery).
+- [X] T087 [US3] Implement `GET /runs/{run_id}` in `api.py`: joins `agent_runs` + `agent_tool_calls` + `agent_model_usage` + `agent_errors` + `agent_artifacts`; serializes per the DTO; includes `generated_code` and tracebacks only when `is_admin` is `True`. 404 on miss.
+- [X] T088 [US3] Implement `GET /threads/{thread_id}` in `api.py`: returns thread metadata + paginated runs (`limit`, `offset` query params) per [contracts/api.md §2](./contracts/api.md). Each run's `primary_artifact` is the earliest `agent_artifact` for that run (single LATERAL or per-run subquery).
 
 ### US3 integration tests
 
-- [ ] T089 [P] [US3] `tests/integration/test_runs_endpoint_default.py`: submit a successful query, GET the run, assert non-admin payload — tool_calls populated, model_usage populated, generated_code is `null`, errors[].traceback is `null` (or absent for safety/validation buckets which already have `null`).
-- [ ] T090 [P] [US3] `tests/integration/test_runs_endpoint_admin.py`: with `AGENT_ADMIN_TOKEN=test-token` and the matching header, the same endpoint returns generated_code (string) and errors[].traceback for unexpected-bucket errors. Without the header, returns the non-admin shape.
-- [ ] T091 [P] [US3] `tests/integration/test_runs_endpoint_no_admin_secret.py`: submit a deliberate sandbox failure, GET the run as a non-admin, assert no string in the JSON body matches `Traceback (most recent` or `OPENAI_API_KEY` (literal grep over the serialized body).
-- [ ] T092 [P] [US3] `tests/integration/test_threads_endpoint.py`: create three runs under one thread, GET the thread, assert `run_count=3` and runs are listed in chronological order with their primary artifact urls populated for the successful ones.
-- [ ] T093 [P] [US3] `tests/integration/test_threads_endpoint_pagination.py`: create 5 runs, query with `limit=2`, assert exactly 2 returned; query with `offset=2&limit=2`, assert the next 2; `offset=4&limit=2` returns 1.
-- [ ] T094 [P] [US3] `tests/integration/test_runs_endpoint_404.py`: GET a random UUID, expect 404 with `code=run_not_found`.
+- [X] T089 [P] [US3] `tests/integration/test_runs_endpoint_default.py`: submit a successful query, GET the run, assert non-admin payload — tool_calls populated, model_usage populated, generated_code is `null`, errors[].traceback is `null` (or absent for safety/validation buckets which already have `null`).
+- [X] T090 [P] [US3] `tests/integration/test_runs_endpoint_admin.py`: with `AGENT_ADMIN_TOKEN=test-token` and the matching header, the same endpoint returns generated_code (string) and errors[].traceback for unexpected-bucket errors. Without the header, returns the non-admin shape.
+- [X] T091 [P] [US3] `tests/integration/test_runs_endpoint_no_admin_secret.py`: submit a deliberate sandbox failure, GET the run as a non-admin, assert no string in the JSON body matches `Traceback (most recent` or `OPENAI_API_KEY` (literal grep over the serialized body).
+- [X] T092 [P] [US3] `tests/integration/test_threads_endpoint.py`: create three runs under one thread, GET the thread, assert `run_count=3` and runs are listed in chronological order with their primary artifact urls populated for the successful ones.
+- [X] T093 [P] [US3] `tests/integration/test_threads_endpoint_pagination.py`: create 5 runs, query with `limit=2`, assert exactly 2 returned; query with `offset=2&limit=2`, assert the next 2; `offset=4&limit=2` returns 1.
+- [X] T094 [P] [US3] `tests/integration/test_runs_endpoint_404.py`: GET a random UUID, expect 404 with `code=run_not_found`.
 
 **Checkpoint**: US3 demonstrable. Inspection endpoints reveal full trace; admin path is secret-aware; default path leaks nothing. SC-005 verifiable.
 

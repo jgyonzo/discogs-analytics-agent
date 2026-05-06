@@ -39,12 +39,13 @@ def health() -> JSONResponse:
     return JSONResponse(payload, status_code=http_status)
 
 
-# /query and /artifacts routes are registered in api_query.py and
-# imported into the app module here. Avoids a circular import where
-# /query needs the graph builder and the graph builder needs the
-# settings module.
+# /query, /artifacts, and the US3 inspection endpoints are registered
+# in sibling modules and pulled in here for side-effects only. Avoids
+# a circular import where /query needs the graph builder and the
+# graph builder needs the settings module.
 def _register_routes() -> None:
-    from discogs_agent import api_query  # noqa: F401  side-effect: registers routes
+    from discogs_agent import api_admin  # noqa: F401
+    from discogs_agent import api_query  # noqa: F401
 
 
 _register_routes()

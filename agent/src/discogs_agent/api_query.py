@@ -7,6 +7,7 @@ finalizing the run, projecting state to the response DTO.
 
 from __future__ import annotations
 
+import traceback as _traceback_mod
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -187,7 +188,7 @@ def post_query(payload: QueryRequest) -> QueryResponse:
                 node_name="api",
                 error_type="unexpected",
                 error_message=f"{type(exc).__name__}: {exc}",
-                traceback=None,
+                traceback=_traceback_mod.format_exc(),
             )
             session.commit()
         except Exception:
@@ -232,14 +233,22 @@ def post_query(payload: QueryRequest) -> QueryResponse:
     # Carry-over (US4 — empty in MVP).
     carryover_preamble = final_state.get("carryover_preamble")
     carryover_turn_count = int(final_state.get("carryover_turn_count", 0))
-    if carryover_preamble or carryover_turn_count:
-        run_repo.update_metadata(
-            UUID(run_id),
-            carryover={
-                "turn_count": carryover_turn_count,
-                "preamble": carryover_preamble,
-            },
-        )
+    carryover_meta = (
+        {"turn_count": carryover_turn_count, "preamble": carryover_preamble}
+        if (carryover_preamble or carryover_turn_count)
+        else None
+    )
+
+    # Inspection metadata (US3): always persist generated_code +
+    # route_rationale + retry_count so /runs/{id} can surface them.
+    # Admin gating happens at the response layer.
+    run_repo.update_metadata(
+        UUID(run_id),
+        carryover=carryover_meta,
+        route_rationale=route.get("rationale"),
+        retry_count=int(final_state.get("retry_count") or 0),
+        generated_code=final_state.get("generated_code"),
+    )
 
     final_text = final_state.get("final_response") or ""
     run_repo.finalize(

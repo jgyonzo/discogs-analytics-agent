@@ -124,6 +124,14 @@ class RunRepo:
         )
         return list(self.session.scalars(stmt))
 
+    def count_by_thread(self, thread_id: UUID) -> int:
+        from sqlalchemy import func as _func
+
+        stmt = select(_func.count()).select_from(Run).where(
+            Run.thread_id == thread_id
+        )
+        return int(self.session.scalar(stmt) or 0)
+
 
 # ─── Tool calls ───────────────────────────────────────────────────────
 
