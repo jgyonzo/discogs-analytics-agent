@@ -64,8 +64,7 @@ def check_duckdb(duckdb_path: str | Path) -> dict[str, Any]:
         return out
     try:
         rows = con.execute(
-            "SELECT table_name FROM information_schema.tables "
-            "WHERE table_schema = 'main'"
+            "SELECT table_name FROM information_schema.tables WHERE table_schema = 'main'"
         ).fetchall()
     except duckdb.Error as exc:
         out["error"] = f"query_failed: {type(exc).__name__}: {exc}"
@@ -86,9 +85,7 @@ def check_duckdb(duckdb_path: str | Path) -> dict[str, Any]:
     return out
 
 
-def check_postgres(
-    engine: Engine, timeout: float = POSTGRES_TIMEOUT_SECONDS
-) -> dict[str, Any]:
+def check_postgres(engine: Engine, timeout: float = POSTGRES_TIMEOUT_SECONDS) -> dict[str, Any]:
     out: dict[str, Any] = {"ok": False, "error": None}
 
     def _probe() -> None:

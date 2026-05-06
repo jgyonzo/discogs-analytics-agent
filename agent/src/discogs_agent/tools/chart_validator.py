@@ -6,17 +6,24 @@ SandboxOutput-shaped dict.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from discogs_agent.tools.base import traced_tool
 
-
 _ACCEPTED_CHART_TYPES = {
-    "bar", "line", "scatter", "pie", "histogram", "box", "area", "table",
+    "bar",
+    "line",
+    "scatter",
+    "pie",
+    "histogram",
+    "box",
+    "area",
+    "table",
 }
 
 
@@ -49,15 +56,19 @@ def _validate(payload: ValidatorInput) -> ValidatorOutput:
     er = payload.execution_result
 
     if er.get("exit_code") != 0:
-        errors.append(ValidationError(
-            rule="nonzero_exit",
-            detail=f"exit_code={er.get('exit_code')}",
-        ))
+        errors.append(
+            ValidationError(
+                rule="nonzero_exit",
+                detail=f"exit_code={er.get('exit_code')}",
+            )
+        )
     if er.get("exception_type"):
-        errors.append(ValidationError(
-            rule="exception_raised",
-            detail=str(er.get("exception_type")),
-        ))
+        errors.append(
+            ValidationError(
+                rule="exception_raised",
+                detail=str(er.get("exception_type")),
+            )
+        )
 
     result = er.get("result")
     if not isinstance(result, dict):
@@ -80,10 +91,12 @@ def _validate(payload: ValidatorInput) -> ValidatorOutput:
     try:
         chart_resolved.relative_to(expected_dir)
     except ValueError:
-        errors.append(ValidationError(
-            rule="chart_path_outside_dir",
-            detail=f"{chart_resolved} not under {expected_dir}",
-        ))
+        errors.append(
+            ValidationError(
+                rule="chart_path_outside_dir",
+                detail=f"{chart_resolved} not under {expected_dir}",
+            )
+        )
 
     if not chart_path.exists():
         errors.append(ValidationError(rule="chart_path_missing_file", detail=str(chart_path)))

@@ -42,7 +42,7 @@ def test_runs_endpoint_admin_reveals_code_and_traceback(
             error_type="unexpected",
             error_message="RuntimeError: synthetic",
             traceback=(
-                'Traceback (most recent call last):\n'
+                "Traceback (most recent call last):\n"
                 '  File "<stdin>", line 1, in <module>\n'
                 "RuntimeError: synthetic"
             ),
@@ -80,9 +80,7 @@ def test_runs_endpoint_admin_reveals_code_and_traceback(
             assert err["traceback"] is None
 
 
-def test_admin_disabled_when_token_empty(
-    agent_env: dict, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_admin_disabled_when_token_empty(agent_env: dict, monkeypatch: pytest.MonkeyPatch) -> None:
     """Default deny: even with the header, an empty AGENT_ADMIN_TOKEN
     must NOT elevate the request."""
     from discogs_agent.api import app
@@ -98,9 +96,7 @@ def test_admin_disabled_when_token_empty(
     run_id = resp.run_id
 
     with TestClient(app) as client:
-        r = client.get(
-            f"/runs/{run_id}", headers={"X-Agent-Admin": "anything"}
-        )
+        r = client.get(f"/runs/{run_id}", headers={"X-Agent-Admin": "anything"})
 
     assert r.status_code == 200
     body = r.json()

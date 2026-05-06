@@ -11,7 +11,6 @@ from __future__ import annotations
 import hashlib
 import re
 from dataclasses import dataclass
-from typing import Any
 
 # (node_name, query_hash) -> raw response string. Tests populate this.
 _responses: dict[tuple[str, str], str] = {}
@@ -107,8 +106,16 @@ _YEARLY_PATTERN = re.compile(r"\b(year|yearly|annual)\b", re.IGNORECASE)
 # schema-context surfaces to the LLM in production. Keep the list
 # tight — these are the styles the test suites exercise.
 _KNOWN_STYLES: tuple[str, ...] = (
-    "Techno", "House", "Ambient", "Drum n Bass", "Trance",
-    "Dub", "Garage", "Disco", "Acid Jazz", "Funk",
+    "Techno",
+    "House",
+    "Ambient",
+    "Drum n Bass",
+    "Trance",
+    "Dub",
+    "Garage",
+    "Disco",
+    "Acid Jazz",
+    "Funk",
 )
 
 
@@ -152,7 +159,7 @@ def _fallback_for_node(node: str, user_query: str) -> str:
 def _plan_for_style(style: str, user_query: str) -> str:
     grain = "year" if _YEARLY_PATTERN.search(user_query) else "decade"
     return (
-        '{\n'
+        "{\n"
         '  "analysis_intent": "trend",\n'
         '  "tables": ["release_fact"],\n'
         f'  "dimensions": ["{grain}"],\n'
@@ -160,7 +167,7 @@ def _plan_for_style(style: str, user_query: str) -> str:
         f'  "filters": [{{"column": "style", "operator": "=", "value": "{style}"}}],\n'
         '  "chart_type": "line",\n'
         '  "notes": "Style filter on release_fact + COUNT DISTINCT release_id."\n'
-        '}'
+        "}"
     )
 
 
@@ -168,39 +175,39 @@ def _code_for_style(style: str, user_query: str) -> str:
     grain = "year" if _YEARLY_PATTERN.search(user_query) else "decade"
     title = f"{style} releases over time"
     return (
-        'import duckdb\n'
-        'import pandas as pd\n'
-        'import plotly.express as px\n'
-        'from pathlib import Path\n'
-        'import os\n'
-        '\n'
+        "import duckdb\n"
+        "import pandas as pd\n"
+        "import plotly.express as px\n"
+        "from pathlib import Path\n"
+        "import os\n"
+        "\n"
         'DB_PATH = os.environ["ANALYTICS_DUCKDB_PATH"]\n'
         'ARTIFACT_DIR = Path(os.environ["ARTIFACT_DIR"])\n'
-        'ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)\n'
-        '\n'
+        "ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)\n"
+        "\n"
         'con = duckdb.connect(DB_PATH, read_only=True, config={"temp_directory": "/tmp/duckdb"})\n'
-        '\n'
+        "\n"
         'sql = """\n'
-        f'SELECT {grain}, COUNT(DISTINCT release_id) AS releases\n'
-        'FROM release_fact\n'
+        f"SELECT {grain}, COUNT(DISTINCT release_id) AS releases\n"
+        "FROM release_fact\n"
         f"WHERE style = '{style}' AND {grain} IS NOT NULL\n"
-        f'GROUP BY {grain}\n'
-        f'ORDER BY {grain}\n'
+        f"GROUP BY {grain}\n"
+        f"ORDER BY {grain}\n"
         '"""\n'
-        '\n'
-        'df = con.execute(sql).df()\n'
-        '\n'
+        "\n"
+        "df = con.execute(sql).df()\n"
+        "\n"
         f'fig = px.line(df, x="{grain}", y="releases", title="{title}")\n'
         'chart_path = ARTIFACT_DIR / "chart.html"\n'
         'fig.write_html(str(chart_path), include_plotlyjs="inline")\n'
-        '\n'
-        'RESULT = {\n'
+        "\n"
+        "RESULT = {\n"
         '    "sql": sql,\n'
         '    "chart_path": str(chart_path),\n'
         '    "dataframe_preview": df.head(20).to_dict(orient="records"),\n'
         '    "row_count": len(df),\n'
         '    "chart_type": "line",\n'
-        '}\n'
+        "}\n"
     )
 
 

@@ -9,6 +9,8 @@ from discogs_agent.graph.state import AgentState
 from discogs_agent.observability.tracing import use_node
 from discogs_agent.tools.sql_safety_checker import (
     SafetyInput,
+)
+from discogs_agent.tools.sql_safety_checker import (
     sql_safety_checker as sql_safety_checker_tool,
 )
 

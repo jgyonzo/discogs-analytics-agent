@@ -12,16 +12,14 @@ from discogs_agent.graph.state import AgentState
 from discogs_agent.observability.tracing import use_node
 from discogs_agent.tools.chart_validator import (
     ValidatorInput,
+)
+from discogs_agent.tools.chart_validator import (
     chart_validator as chart_validator_tool,
 )
 
 
 def chart_validator_node(state: AgentState) -> AgentState:
-    expected_dir = str(
-        Path(settings.ARTIFACTS_DIR)
-        / state["thread_id"]
-        / state["run_id"]
-    )
+    expected_dir = str(Path(settings.ARTIFACTS_DIR) / state["thread_id"] / state["run_id"])
     with use_node("chart_validator"):
         result = chart_validator_tool(
             ValidatorInput(

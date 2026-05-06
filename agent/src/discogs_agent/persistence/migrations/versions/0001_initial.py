@@ -20,7 +20,7 @@ depends_on = None
 
 
 def _uuid() -> sa.types.TypeEngine[object]:
-    return PG_UUID(as_uuid=True).with_variant(sa.String(36), "sqlite")
+    return PG_UUID(as_uuid=True).with_variant(sa.String(36), "sqlite")  # type: ignore[return-value]
 
 
 def _json() -> sa.types.TypeEngine[object]:
@@ -28,7 +28,7 @@ def _json() -> sa.types.TypeEngine[object]:
 
 
 def _ts() -> sa.types.TypeEngine[object]:
-    return sa.TIMESTAMP(timezone=True).with_variant(sa.TIMESTAMP(timezone=False), "sqlite")
+    return sa.TIMESTAMP(timezone=True).with_variant(sa.TIMESTAMP(timezone=False), "sqlite")  # type: ignore[return-value]
 
 
 def upgrade() -> None:

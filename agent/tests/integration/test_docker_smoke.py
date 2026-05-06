@@ -67,9 +67,7 @@ def test_docker_compose_smoke(seed_duckdb: Path) -> None:
     env_path = REPO_ROOT / ".env"
     api_key = _read_env_value(env_path, "OPENAI_API_KEY")
     if not api_key:
-        pytest.skip(
-            "OPENAI_API_KEY missing from .env — smoke test needs a real key"
-        )
+        pytest.skip("OPENAI_API_KEY missing from .env — smoke test needs a real key")
 
     # Stage the seed DuckDB at the bind-mount path if no real published
     # DuckDB exists. We deliberately do NOT overwrite a real one: the
@@ -100,8 +98,7 @@ def test_docker_compose_smoke(seed_duckdb: Path) -> None:
         if staged_duckdb:
             HOST_DUCKDB.unlink(missing_ok=True)
         pytest.fail(
-            f"docker compose up failed: stdout={compose_up.stdout!r} "
-            f"stderr={compose_up.stderr!r}"
+            f"docker compose up failed: stdout={compose_up.stdout!r} stderr={compose_up.stderr!r}"
         )
 
     try:
@@ -118,9 +115,7 @@ def test_docker_compose_smoke(seed_duckdb: Path) -> None:
                 pass
             time.sleep(2)
         else:
-            raise AssertionError(
-                f"agent never became healthy within {HEALTH_TIMEOUT_SECONDS}s"
-            )
+            raise AssertionError(f"agent never became healthy within {HEALTH_TIMEOUT_SECONDS}s")
 
         assert body is not None
         assert body["checks"]["duckdb"]["ok"] is True
@@ -145,9 +140,7 @@ def test_docker_compose_smoke(seed_duckdb: Path) -> None:
             assert html_files, f"no chart .html under {chart_dir}"
             assert html_files[0].stat().st_size > 0
 
-        run_inspect = requests.get(
-            f"http://localhost:8000/runs/{payload['run_id']}", timeout=10
-        )
+        run_inspect = requests.get(f"http://localhost:8000/runs/{payload['run_id']}", timeout=10)
         # /runs is US3 — accept either 200 (already shipped) or 404
         # (hasn't shipped yet); we still verified the run via /query.
         assert run_inspect.status_code in (200, 404)

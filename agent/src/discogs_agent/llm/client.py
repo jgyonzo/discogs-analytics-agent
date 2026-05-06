@@ -13,7 +13,7 @@ class ChatLike(Protocol):
     """Minimal interface our nodes rely on. Both the real LangChain
     chat client and the stub conform to this."""
 
-    def invoke(self, messages: list[dict[str, str]]) -> "ChatResponse": ...
+    def invoke(self, messages: list[dict[str, str]]) -> ChatResponse: ...
 
 
 class ChatResponse(Protocol):
@@ -30,11 +30,12 @@ def get_chat_client(model_name: str) -> ChatLike:
         return stub_module.StubChatModel(model_name=model_name)
     # Lazy import — keeps the langchain-openai dep optional in tests.
     from langchain_openai import ChatOpenAI
+    from pydantic import SecretStr
 
     return _LangChainChatAdapter(
         ChatOpenAI(
             model=model_name,
-            api_key=settings.OPENAI_API_KEY,
+            api_key=SecretStr(settings.OPENAI_API_KEY),
             temperature=0.0,
         )
     )
@@ -46,9 +47,7 @@ class _LangChainChatAdapter:
 
     def __init__(self, client: object) -> None:
         self._client = client
-        self.model_name = getattr(client, "model_name", None) or getattr(
-            client, "model", "unknown"
-        )
+        self.model_name = getattr(client, "model_name", None) or getattr(client, "model", "unknown")
 
     def invoke(self, messages: list[dict[str, str]]) -> ChatResponse:
         # langchain expects a list of (role, content) tuples or message objects.

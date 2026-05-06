@@ -134,9 +134,7 @@ def test_postgres_timeout_kicks_in() -> None:
 # ─── Aggregate payload ────────────────────────────────────────────────
 
 
-def test_build_payload_both_up(
-    seed_duckdb: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_build_payload_both_up(seed_duckdb: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from discogs_agent.config import settings
     from discogs_agent.persistence.db import init_engine, reset_engine
 
@@ -157,15 +155,11 @@ def test_build_payload_both_up(
     assert payload["checks"]["postgres"]["ok"] is True
 
 
-def test_build_payload_duckdb_down_is_503(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_build_payload_duckdb_down_is_503(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from discogs_agent.config import settings
     from discogs_agent.persistence.db import init_engine, reset_engine
 
-    monkeypatch.setattr(
-        settings, "ANALYTICS_DUCKDB_PATH", str(tmp_path / "nope.duckdb")
-    )
+    monkeypatch.setattr(settings, "ANALYTICS_DUCKDB_PATH", str(tmp_path / "nope.duckdb"))
     reset_engine()
     init_engine("sqlite+pysqlite:///:memory:")
     try:
@@ -204,15 +198,11 @@ def test_build_payload_postgres_down_is_503(
     assert "engine_unavailable" in payload["checks"]["postgres"]["error"]
 
 
-def test_build_payload_both_down_is_503(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_build_payload_both_down_is_503(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from discogs_agent.config import settings
     from discogs_agent.persistence.db import reset_engine
 
-    monkeypatch.setattr(
-        settings, "ANALYTICS_DUCKDB_PATH", str(tmp_path / "missing.duckdb")
-    )
+    monkeypatch.setattr(settings, "ANALYTICS_DUCKDB_PATH", str(tmp_path / "missing.duckdb"))
     reset_engine()
 
     def _boom() -> None:

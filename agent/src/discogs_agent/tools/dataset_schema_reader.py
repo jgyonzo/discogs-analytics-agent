@@ -6,7 +6,8 @@ through the @traced_tool persistence shim.
 
 from __future__ import annotations
 
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -32,29 +33,29 @@ class SchemaReaderOutput(BaseModel):
     warnings: list[str] = []
     # 005-agent-schema-context: pass the enriched fields through so
     # the prompt-rendering nodes can use the pre-rendered block.
-    sample_values: dict[str, dict[str, list[dict[str, Any]]]] = Field(
-        default_factory=dict
-    )
+    sample_values: dict[str, dict[str, list[dict[str, Any]]]] = Field(default_factory=dict)
     domain_glossary: list[str] = Field(default_factory=list)
     published_run_id: str | None = None
     rendered_block: str = ""
     rendered_token_count: int = 0
 
 
-def _build(session_provider: Callable[[], Session | None] | None = None) -> Callable[[SchemaReaderInput], SchemaReaderOutput]:
+def _build(
+    session_provider: Callable[[], Session | None] | None = None,
+) -> Callable[[SchemaReaderInput], SchemaReaderOutput]:
     @traced_tool("dataset_schema_reader", session_provider=session_provider)
     def dataset_schema_reader(payload: SchemaReaderInput) -> SchemaReaderOutput:
         ctx: SchemaContext = get_schema_context(payload.duckdb_path)
         return SchemaReaderOutput(
-            tables={
-                name: [TableColumn(**c) for c in cols]
-                for name, cols in ctx["tables"].items()
-            },
+            tables={name: [TableColumn(**c) for c in cols] for name, cols in ctx["tables"].items()},
             has_master_fact=ctx["has_master_fact"],
             duckdb_path=ctx["duckdb_path"],
             captured_at=ctx["captured_at"],
             warnings=list(ctx.get("warnings", [])),
-            sample_values=ctx.get("sample_values", {}),
+            sample_values={
+                table: {col: [dict(sv) for sv in svs] for col, svs in cols.items()}
+                for table, cols in ctx.get("sample_values", {}).items()
+            },
             domain_glossary=list(ctx.get("domain_glossary", [])),
             published_run_id=ctx.get("published_run_id"),
             rendered_block=ctx.get("rendered_block", ""),

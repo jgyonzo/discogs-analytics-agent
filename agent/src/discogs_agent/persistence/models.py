@@ -43,23 +43,19 @@ class GUID(TypeDecorator[UUID]):
     impl = String(36)
     cache_ok = True
 
-    def load_dialect_impl(self, dialect: Dialect) -> Any:  # type: ignore[override]
+    def load_dialect_impl(self, dialect: Dialect) -> Any:
         if dialect.name == "postgresql":
             return dialect.type_descriptor(PG_UUID(as_uuid=True))
         return dialect.type_descriptor(String(36))
 
-    def process_bind_param(  # type: ignore[override]
-        self, value: UUID | str | None, dialect: Dialect
-    ) -> Any:
+    def process_bind_param(self, value: UUID | str | None, dialect: Dialect) -> Any:
         if value is None:
             return None
         if dialect.name == "postgresql":
             return value if isinstance(value, UUID) else UUID(str(value))
         return str(value) if isinstance(value, UUID) else str(value)
 
-    def process_result_value(  # type: ignore[override]
-        self, value: Any, dialect: Dialect
-    ) -> UUID | None:
+    def process_result_value(self, value: Any, dialect: Dialect) -> UUID | None:
         if value is None:
             return None
         return value if isinstance(value, UUID) else UUID(str(value))
@@ -85,13 +81,9 @@ class Thread(Base):
         TIMESTAMPType, nullable=False, server_default=func.now()
     )
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="active")
-    metadata_json: Mapped[dict[str, Any]] = mapped_column(
-        JSONType, nullable=False, default=dict
-    )
+    metadata_json: Mapped[dict[str, Any]] = mapped_column(JSONType, nullable=False, default=dict)
 
-    runs: Mapped[list[Run]] = relationship(
-        back_populates="thread", cascade="all, delete-orphan"
-    )
+    runs: Mapped[list[Run]] = relationship(back_populates="thread", cascade="all, delete-orphan")
     artifacts: Mapped[list[Artifact]] = relationship(back_populates="thread")
 
     __table_args__ = (
@@ -122,9 +114,7 @@ class Run(Base):
     latency_ms: Mapped[int | None] = mapped_column(Integer)
     final_response: Mapped[str | None] = mapped_column(Text)
     generated_sql: Mapped[str | None] = mapped_column(Text)
-    metadata_json: Mapped[dict[str, Any]] = mapped_column(
-        JSONType, nullable=False, default=dict
-    )
+    metadata_json: Mapped[dict[str, Any]] = mapped_column(JSONType, nullable=False, default=dict)
 
     thread: Mapped[Thread] = relationship(back_populates="runs")
     tool_calls: Mapped[list[ToolCall]] = relationship(
@@ -136,9 +126,7 @@ class Run(Base):
     artifacts: Mapped[list[Artifact]] = relationship(
         back_populates="run", cascade="all, delete-orphan"
     )
-    errors: Mapped[list[Error]] = relationship(
-        back_populates="run", cascade="all, delete-orphan"
-    )
+    errors: Mapped[list[Error]] = relationship(back_populates="run", cascade="all, delete-orphan")
 
     __table_args__ = (
         CheckConstraint(
@@ -235,9 +223,7 @@ class Artifact(Base):
     )
     artifact_type: Mapped[str] = mapped_column(String(32), nullable=False)
     path: Mapped[str] = mapped_column(Text, nullable=False)
-    metadata_json: Mapped[dict[str, Any]] = mapped_column(
-        JSONType, nullable=False, default=dict
-    )
+    metadata_json: Mapped[dict[str, Any]] = mapped_column(JSONType, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMPType, nullable=False, server_default=func.now()
     )

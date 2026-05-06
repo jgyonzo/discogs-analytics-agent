@@ -29,7 +29,6 @@ from discogs_agent.persistence.repositories import (
     ToolCallRepo,
 )
 
-
 # ─── Auth dependency ──────────────────────────────────────────────────
 
 
@@ -188,9 +187,7 @@ def _serialize_run(session: Session, run: Run, *, admin: bool) -> RunDTO:
                 completion_tokens=mu.completion_tokens,
                 total_tokens=mu.total_tokens,
                 estimated_cost_usd=(
-                    float(mu.estimated_cost_usd)
-                    if mu.estimated_cost_usd is not None
-                    else None
+                    float(mu.estimated_cost_usd) if mu.estimated_cost_usd is not None else None
                 ),
                 latency_ms=mu.latency_ms,
                 created_at=mu.created_at,

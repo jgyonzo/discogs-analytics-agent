@@ -52,9 +52,7 @@ def test_budget_too_small_for_any_turn_returns_none() -> None:
 def test_oldest_dropped_when_budget_exceeded() -> None:
     """Five long turns at ~30 tokens each; budget fits roughly two."""
     long_text = "tell me about the historical evolution of every release"
-    turns = [
-        PriorTurn(f"{long_text} ({i})") for i in range(5)
-    ]
+    turns = [PriorTurn(f"{long_text} ({i})") for i in range(5)]
     # Budget tight enough to fit only the most recent couple of turns.
     preamble, count = build_carryover_preamble(turns, token_budget=60)
 

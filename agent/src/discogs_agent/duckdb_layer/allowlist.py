@@ -21,9 +21,7 @@ ALLOWED_TABLES: tuple[str, ...] = (
 # published DuckDB. Used by the schema reader to filter and warn.
 EXPLICITLY_FORBIDDEN_PREFIXES: tuple[str, ...] = ("stg_", "clean_")
 
-EXPLICITLY_FORBIDDEN_TABLES: tuple[str, ...] = (
-    "release_format_summary",
-)
+EXPLICITLY_FORBIDDEN_TABLES: tuple[str, ...] = ("release_format_summary",)
 
 
 def is_allowed(table_name: str) -> bool:

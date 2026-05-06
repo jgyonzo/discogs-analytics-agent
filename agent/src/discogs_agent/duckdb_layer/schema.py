@@ -12,7 +12,7 @@ used by every LLM-prompt-rendering function.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, TypedDict
 
@@ -132,9 +132,7 @@ def _collect_sample_values(
                 error=str(exc),
             )
             continue
-        out.setdefault(table, {})[column] = [
-            {"value": r[0], "count": int(r[1])} for r in rows
-        ]
+        out.setdefault(table, {})[column] = [{"value": r[0], "count": int(r[1])} for r in rows]
     return out
 
 
@@ -142,9 +140,7 @@ def _get_published_run_id(con: duckdb.DuckDBPyConnection) -> str | None:
     """Read the most recent run_id from release_unique_view if the column
     is present. Returns None if the column is absent or the table is empty."""
     try:
-        row = con.execute(
-            "SELECT MAX(run_id) FROM release_unique_view"
-        ).fetchone()
+        row = con.execute("SELECT MAX(run_id) FROM release_unique_view").fetchone()
     except duckdb.Error:
         return None
     if not row or row[0] is None:
@@ -184,9 +180,7 @@ def render_schema_block(
         lines.append("")
 
     if not has_master_fact:
-        lines.append(
-            "master_fact is NOT present in this catalog; do not reference it."
-        )
+        lines.append("master_fact is NOT present in this catalog; do not reference it.")
         lines.append("")
 
     if sample_values:
@@ -238,10 +232,7 @@ def _truncate_to_budget(
     """Render the block; if over budget, drop tail samples per
     `_TRUNCATION_STEPS` and re-render. Returns the (possibly truncated)
     samples, the rendered block, and the final token count."""
-    samples = {
-        t: {c: list(vs) for c, vs in by_col.items()}
-        for t, by_col in sample_values.items()
-    }
+    samples = {t: {c: list(vs) for c, vs in by_col.items()} for t, by_col in sample_values.items()}
     rendered = render_schema_block(tables, samples, glossary, has_master_fact)
     tokens = _count_tokens(rendered, model)
     if tokens <= budget:
@@ -261,9 +252,7 @@ def _truncate_to_budget(
                     budget=budget,
                     tokens_before=tokens,
                 )
-                rendered = render_schema_block(
-                    tables, samples, glossary, has_master_fact
-                )
+                rendered = render_schema_block(tables, samples, glossary, has_master_fact)
                 tokens = _count_tokens(rendered, model)
                 if tokens <= budget:
                     return samples, rendered, tokens
@@ -350,7 +339,7 @@ def read_schema_context(duckdb_path: str | Path) -> SchemaContext:
             tables=tables,
             has_master_fact=has_master,
             duckdb_path=str(path),
-            captured_at=datetime.now(timezone.utc).isoformat(),
+            captured_at=datetime.now(UTC).isoformat(),
             warnings=warnings,
             sample_values=samples,
             domain_glossary=glossary,

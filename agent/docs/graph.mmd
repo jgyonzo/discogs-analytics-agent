@@ -1,0 +1,32 @@
+---
+config:
+  flowchart:
+    curve: linear
+---
+graph TD;
+	__start__([<p>__start__</p>]):::first
+	load_schema(load_schema)
+	router(router)
+	query_understanding(query_understanding)
+	code_generator(code_generator)
+	sql_safety_checker(sql_safety_checker)
+	sandbox_executor(sandbox_executor)
+	chart_validator(chart_validator)
+	response_synthesizer(response_synthesizer)
+	__end__([<p>__end__</p>]):::last
+	__start__ --> load_schema;
+	chart_validator -.-> code_generator;
+	chart_validator -.-> response_synthesizer;
+	code_generator --> sql_safety_checker;
+	load_schema --> router;
+	query_understanding --> code_generator;
+	router -.-> query_understanding;
+	router -.-> response_synthesizer;
+	sandbox_executor --> chart_validator;
+	sql_safety_checker -.-> code_generator;
+	sql_safety_checker -.-> response_synthesizer;
+	sql_safety_checker -.-> sandbox_executor;
+	response_synthesizer --> __end__;
+	classDef default fill:#f2f0ff,line-height:1.2
+	classDef first fill-opacity:0
+	classDef last fill:#bfb6fc

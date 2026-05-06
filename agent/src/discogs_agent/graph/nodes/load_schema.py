@@ -17,8 +17,6 @@ from discogs_agent.tools.dataset_schema_reader import (
 
 def load_schema_node(state: AgentState) -> AgentState:
     with use_node("load_schema"):
-        out = dataset_schema_reader(
-            SchemaReaderInput(duckdb_path=settings.ANALYTICS_DUCKDB_PATH)
-        )
+        out = dataset_schema_reader(SchemaReaderInput(duckdb_path=settings.ANALYTICS_DUCKDB_PATH))
     state["schema_context"] = out.model_dump()
     return state

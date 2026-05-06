@@ -6,8 +6,9 @@ filesystem path is inside ARTIFACTS_DIR.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -39,9 +40,7 @@ def _assert_inside_artifacts_dir(path: str) -> Path:
     try:
         p.relative_to(artifacts_dir)
     except ValueError as exc:
-        raise ValueError(
-            f"artifact path {p} is outside ARTIFACTS_DIR={artifacts_dir}"
-        ) from exc
+        raise ValueError(f"artifact path {p} is outside ARTIFACTS_DIR={artifacts_dir}") from exc
     return p
 
 

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from discogs_agent.tools.base import NODE_TOOL_ALLOWLIST
 
-
 _EXPECTED: dict[str, set[str]] = {
     "load_schema": {"dataset_schema_reader"},
     "router": {"query_classifier", "cost_logger"},

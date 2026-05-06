@@ -8,14 +8,19 @@ from discogs_agent.llm import stub as stub_module
 
 def test_label_diversity_query_succeeds(agent_env: dict) -> None:
     qhash = stub_module._hash_query("Which labels have the most stylistic diversity?")
-    stub_module.set_responses({
-        ("router", qhash):
-            '{"complexity": "complex", "selected_model": "gpt-4o", "rationale": "Joins required."}',
-        ("query_understanding", qhash):
-            '{"analysis_intent": "top_n", "tables": ["release_label_bridge", "release_fact"], '
+    stub_module.set_responses(
+        {
+            (
+                "router",
+                qhash,
+            ): '{"complexity": "complex", "selected_model": "gpt-4o", "rationale": "Joins required."}',
+            (
+                "query_understanding",
+                qhash,
+            ): '{"analysis_intent": "top_n", "tables": ["release_label_bridge", "release_fact"], '
             '"dimensions": ["label_name"], "metrics": [{"name": "distinct_styles", "aggregation": "count_distinct", "column": "style"}], '
             '"filters": [], "chart_type": "bar", "notes": ""}',
-        ("code_generator", qhash): '''import duckdb
+            ("code_generator", qhash): '''import duckdb
 import pandas as pd
 import plotly.express as px
 from pathlib import Path
@@ -39,7 +44,8 @@ chart_path = ARTIFACT_DIR / "chart.html"
 fig.write_html(str(chart_path), include_plotlyjs="inline")
 RESULT = {"sql": sql, "chart_path": str(chart_path), "dataframe_preview": df.head(20).to_dict(orient="records"), "row_count": len(df), "chart_type": "bar"}
 ''',
-    })
+        }
+    )
 
     resp = agent_env["post_query"](
         agent_env["QueryRequest"](message="Which labels have the most stylistic diversity?")

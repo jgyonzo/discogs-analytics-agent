@@ -33,10 +33,9 @@ def test_thread_resume_carries_prior_query_text(agent_env: dict) -> None:
 
     def patched(self, messages):
         from discogs_agent.observability.tracing import node_context
+
         node = node_context.get() or "_unknown"
-        captured.setdefault(node, []).append(
-            "\n".join(m.get("content", "") for m in messages)
-        )
+        captured.setdefault(node, []).append("\n".join(m.get("content", "") for m in messages))
         return original_invoke(self, messages)
 
     stub_module.StubChatModel.invoke = patched
@@ -49,9 +48,7 @@ def test_thread_resume_carries_prior_query_text(agent_env: dict) -> None:
             )
         )
         # Same query, brand-new thread (no carry-over available).
-        r3 = post(
-            QR(message="Show the evolution of House releases over time")
-        )
+        r3 = post(QR(message="Show the evolution of House releases over time"))
     finally:
         stub_module.StubChatModel.invoke = original_invoke
 

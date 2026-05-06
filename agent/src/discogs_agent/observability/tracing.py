@@ -4,10 +4,10 @@ tool calls to the graph node currently executing.
 
 from __future__ import annotations
 
-from contextvars import ContextVar
+from collections.abc import Iterator
 from contextlib import contextmanager
+from contextvars import ContextVar
 from time import monotonic
-from typing import Iterator
 
 # Set by every node entry; read by tools/base.py to populate
 # agent_tool_calls.node_name. Defaults to "unknown" so unattributed

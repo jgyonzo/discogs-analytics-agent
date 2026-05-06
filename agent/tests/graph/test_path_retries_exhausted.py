@@ -10,17 +10,18 @@ _QUERY = "Trigger retries exhausted"
 def test_retries_exhausted_failed_safety(agent_env: dict) -> None:
     qhash = stub_module._hash_query(_QUERY)
 
-    bad_code = '''import duckdb
+    bad_code = """import duckdb
 import os
 con = duckdb.connect(os.environ["ANALYTICS_DUCKDB_PATH"], read_only=True)
 sql = "SELECT * FROM stg_releases"
 df = con.execute(sql).df()
-'''
+"""
 
     original_invoke = stub_module.StubChatModel.invoke
 
     def patched_invoke(self, messages):
         from discogs_agent.observability.tracing import node_context
+
         if node_context.get() == "code_generator":
             return stub_module._StubResponse(
                 content=bad_code,
@@ -30,11 +31,15 @@ df = con.execute(sql).df()
 
     stub_module.StubChatModel.invoke = patched_invoke
 
-    stub_module.set_responses({
-        ("router", qhash):
-            '{"complexity": "simple", "selected_model": "gpt-4o-mini", "rationale": "stub"}',
-        ("query_understanding", qhash): stub_module._PLAN_BY_DECADE,
-    })
+    stub_module.set_responses(
+        {
+            (
+                "router",
+                qhash,
+            ): '{"complexity": "simple", "selected_model": "gpt-4o-mini", "rationale": "stub"}',
+            ("query_understanding", qhash): stub_module._PLAN_BY_DECADE,
+        }
+    )
 
     try:
         resp = agent_env["post_query"](agent_env["QueryRequest"](message=_QUERY))

@@ -33,18 +33,10 @@ _NEW = (
 
 
 def upgrade() -> None:
-    op.drop_constraint(
-        "agent_runs_status_check", "agent_runs", type_="check"
-    )
-    op.create_check_constraint(
-        "agent_runs_status_check", "agent_runs", _NEW
-    )
+    op.drop_constraint("agent_runs_status_check", "agent_runs", type_="check")
+    op.create_check_constraint("agent_runs_status_check", "agent_runs", _NEW)
 
 
 def downgrade() -> None:
-    op.drop_constraint(
-        "agent_runs_status_check", "agent_runs", type_="check"
-    )
-    op.create_check_constraint(
-        "agent_runs_status_check", "agent_runs", _OLD
-    )
+    op.drop_constraint("agent_runs_status_check", "agent_runs", type_="check")
+    op.create_check_constraint("agent_runs_status_check", "agent_runs", _OLD)

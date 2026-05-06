@@ -140,6 +140,12 @@ load_schema → router → query_understanding → code_generator
 Retry edges loop from `sql_safety_checker` and `chart_validator`
 back to `code_generator`, capped at `MAX_RETRIES`.
 
+The compiled graph (rendered straight from
+`graph.builder.build_graph().get_graph().draw_mermaid()`) is
+checked in at [`docs/graph.mmd`](docs/graph.mmd) — paste it into
+any Mermaid renderer (e.g.
+[mermaid.live](https://mermaid.live)) for a visual overview.
+
 ---
 
 ## Running tests
@@ -176,6 +182,34 @@ Golden tests (LLM-stub by default):
 
 ```bash
 pytest tests/golden/
+```
+
+### Coverage
+
+The Phase 7 baseline (`pytest --cov=discogs_agent`, run against the
+default test set — i.e. excluding the docker-compose smoke,
+testcontainers Postgres variants, and the sandbox-fsize budget
+test which all need extra environment) is:
+
+| Strata | Coverage |
+|--------|---------:|
+| Total (across `src/discogs_agent/`) | **89 %** |
+| Graph nodes (`graph/nodes/*`) | 90–100 % per file |
+| Tools (`tools/*`) | 86–100 % per file |
+| Persistence (`persistence/*`) | 76–97 % |
+| API surface (`api*.py`) | 75–98 % |
+
+The biggest uncovered chunks are the OpenAI-only path in
+`llm/client.py` (~41 %, exercised only in the docker smoke test
+which burns real credit) and `sandbox/restrictions.py` (~32 %,
+the Linux preexec / RLIMIT branches are kernel-platform-specific
+and exercised on the agent container, not the macOS host).
+Bringing these to 100 % requires running the gated suites:
+
+```bash
+AGENT_USE_POSTGRES=1 pytest tests/integration/test_persistence_survives_restart.py
+AGENT_DOCKER_SMOKE=1 pytest tests/integration/test_docker_smoke.py
+pytest tests/integration/test_sandbox_fsize_budget.py   # Linux only
 ```
 
 ---

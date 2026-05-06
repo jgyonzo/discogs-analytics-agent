@@ -28,6 +28,4 @@ def estimate_cost(
     if rates is None:
         return None
     in_rate, out_rate = rates
-    return (in_rate * prompt_tokens + out_rate * completion_tokens).quantize(
-        Decimal("0.000001")
-    )
+    return (in_rate * prompt_tokens + out_rate * completion_tokens).quantize(Decimal("0.000001"))

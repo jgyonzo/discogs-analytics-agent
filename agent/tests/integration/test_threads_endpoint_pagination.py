@@ -32,12 +32,8 @@ def test_threads_endpoint_pagination(agent_env: dict) -> None:
 
     with TestClient(app) as client:
         page1 = client.get(f"/threads/{thread_id}", params={"limit": 2}).json()
-        page2 = client.get(
-            f"/threads/{thread_id}", params={"limit": 2, "offset": 2}
-        ).json()
-        page3 = client.get(
-            f"/threads/{thread_id}", params={"limit": 2, "offset": 4}
-        ).json()
+        page2 = client.get(f"/threads/{thread_id}", params={"limit": 2, "offset": 2}).json()
+        page3 = client.get(f"/threads/{thread_id}", params={"limit": 2, "offset": 4}).json()
 
     assert page1["run_count"] == 5
     assert [r["run_id"] for r in page1["runs"]] == expected_ids[0:2]

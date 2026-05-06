@@ -8,10 +8,10 @@ finalizing the run, projecting state to the response DTO.
 from __future__ import annotations
 
 import traceback as _traceback_mod
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from fastapi import HTTPException
 from fastapi.responses import FileResponse
@@ -30,7 +30,6 @@ from discogs_agent.persistence.repositories import (
     ErrorRepo,
     RunRepo,
     ThreadRepo,
-    ToolCallRepo,
 )
 
 logger = obslog.get_logger(__name__)
@@ -154,7 +153,7 @@ def post_query(payload: QueryRequest) -> QueryResponse:
             detail={"error": {"code": "internal_error", "message": str(exc)}},
         ) from exc
 
-    started_at = datetime.now(timezone.utc)
+    started_at = datetime.now(UTC)
 
     initial_state = {
         "thread_id": thread_id,
@@ -169,7 +168,7 @@ def post_query(payload: QueryRequest) -> QueryResponse:
         "dataframe_preview": [],
     }
 
-    final_state: dict | None = None
+    final_state: dict[str, Any] | None = None
     error_obj: Exception | None = None
     try:
         # Bind both the run_id and the session for the request scope.
@@ -194,7 +193,7 @@ def post_query(payload: QueryRequest) -> QueryResponse:
         except Exception:
             session.rollback()
 
-    finished_at = datetime.now(timezone.utc)
+    finished_at = datetime.now(UTC)
     latency_ms = int((finished_at - started_at).total_seconds() * 1000)
 
     if error_obj is not None or final_state is None:
@@ -203,8 +202,7 @@ def post_query(payload: QueryRequest) -> QueryResponse:
             run_id=UUID(run_id),
             status="failed_internal",
             final_response=(
-                "Something unexpected went wrong. The error is logged "
-                f"with run_id {run_id}."
+                f"Something unexpected went wrong. The error is logged with run_id {run_id}."
             ),
             latency_ms=latency_ms,
         )
@@ -212,7 +210,13 @@ def post_query(payload: QueryRequest) -> QueryResponse:
         session.close()
         raise HTTPException(
             status_code=500,
-            detail={"error": {"code": "internal_error", "message": "internal_error", "details": {"run_id": run_id}}},
+            detail={
+                "error": {
+                    "code": "internal_error",
+                    "message": "internal_error",
+                    "details": {"run_id": run_id},
+                }
+            },
         )
 
     # Project final state into the response.
@@ -274,7 +278,7 @@ def post_query(payload: QueryRequest) -> QueryResponse:
             )
 
     if status == "succeeded_empty":
-        dataframe_preview: list = []
+        dataframe_preview: list[dict[str, Any]] = []
     else:
         dataframe_preview = final_state.get("dataframe_preview") or []
 
@@ -335,8 +339,10 @@ def get_artifact(artifact_id: str) -> FileResponse:
         except ValueError:
             raise HTTPException(
                 status_code=404,
-                detail={"error": {"code": "artifact_not_found", "message": "path outside ARTIFACTS_DIR"}},
-            )
+                detail={
+                    "error": {"code": "artifact_not_found", "message": "path outside ARTIFACTS_DIR"}
+                },
+            ) from None
         if not path.exists():
             raise HTTPException(
                 status_code=404,

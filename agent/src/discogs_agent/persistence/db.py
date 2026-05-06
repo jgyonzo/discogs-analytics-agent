@@ -13,19 +13,16 @@ from __future__ import annotations
 from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
-from typing import Optional
 
 from sqlalchemy import Engine, create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from discogs_agent.config import settings
 
-_engine: Optional[Engine] = None
-_SessionLocal: Optional[sessionmaker[Session]] = None
+_engine: Engine | None = None
+_SessionLocal: sessionmaker[Session] | None = None
 
-session_context: ContextVar[Session | None] = ContextVar(
-    "agent_session", default=None
-)
+session_context: ContextVar[Session | None] = ContextVar("agent_session", default=None)
 
 
 @contextmanager

@@ -21,25 +21,29 @@ def test_cost_logger_runs_without_session() -> None:
     """When no session_provider is wired, the tool still computes the
     estimate (just doesn't persist)."""
     with use_node("router"):
-        out = cost_logger(CostInput(
-            node_name="router",
-            model_name="gpt-4o-mini",
-            prompt_tokens=100,
-            completion_tokens=50,
-            latency_ms=200,
-        ))
+        out = cost_logger(
+            CostInput(
+                node_name="router",
+                model_name="gpt-4o-mini",
+                prompt_tokens=100,
+                completion_tokens=50,
+                latency_ms=200,
+            )
+        )
     assert out.estimated_cost_usd is not None
     assert out.rate_card_version == RATE_CARD_VERSION
 
 
 def test_cost_logger_unknown_model_warns() -> None:
     with use_node("router"):
-        out = cost_logger(CostInput(
-            node_name="router",
-            model_name="gpt-mystery",
-            prompt_tokens=100,
-            completion_tokens=50,
-            latency_ms=200,
-        ))
+        out = cost_logger(
+            CostInput(
+                node_name="router",
+                model_name="gpt-mystery",
+                prompt_tokens=100,
+                completion_tokens=50,
+                latency_ms=200,
+            )
+        )
     assert out.estimated_cost_usd is None
     assert out.rate_card_version == "unknown"

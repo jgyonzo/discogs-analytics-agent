@@ -315,24 +315,24 @@ final docs, and the cross-cutting tests that span phases.
 
 ### Golden queries (SC-002 / SC-006 / SC-008 anchor)
 
-- [ ] T101 [P] `tests/golden/test_golden_releases_by_decade.py`: stub LLM returns the canonical SQL from [docs/discogs_agent_initial_spec.md §20.1](../../docs/discogs_agent_initial_spec.md); `POST /query` "Show releases by decade"; assert chart artifact, persisted SQL queries `release_unique_view`, `chart_type=bar`.
-- [ ] T102 [P] `tests/golden/test_golden_techno_over_time.py`: as above for §20.2; **MUST assert persisted SQL contains `COUNT(DISTINCT release_id)` OR queries `release_unique_view` exclusively**. Anchors SC-008.
-- [ ] T103 [P] `tests/golden/test_golden_vinyl_vs_cd.py`: §20.3; asserts SQL uses `has_vinyl`/`has_cd` and `release_unique_view`.
-- [ ] T104 [P] `tests/golden/test_golden_label_diversity.py`: §20.4; asserts SQL joins `release_label_bridge` and `release_fact` with `COUNT(DISTINCT)`.
-- [ ] T105 [P] `tests/golden/test_golden_house_outliers.py`: §20.5; asserts SQL contains `WITH ... STDDEV_SAMP`.
-- [ ] T106 [P] `tests/golden/test_golden_master_versions.py`: §20.6; uses `seed.duckdb` (with master_fact); asserts SQL queries `master_fact` ordered by `release_count`. With `seed_no_master.duckdb`, the same test variant asserts the run ends `failed_unsupported`.
+- [X] T101 [P] `tests/golden/test_golden_releases_by_decade.py`: stub LLM returns the canonical SQL from [docs/discogs_agent_initial_spec.md §20.1](../../docs/discogs_agent_initial_spec.md); `POST /query` "Show releases by decade"; assert chart artifact, persisted SQL queries `release_unique_view`, `chart_type=bar`.
+- [X] T102 [P] `tests/golden/test_golden_techno_over_time.py`: as above for §20.2; **MUST assert persisted SQL contains `COUNT(DISTINCT release_id)` OR queries `release_unique_view` exclusively**. Anchors SC-008.
+- [X] T103 [P] `tests/golden/test_golden_vinyl_vs_cd.py`: §20.3; asserts SQL uses `has_vinyl`/`has_cd` and `release_unique_view`.
+- [X] T104 [P] `tests/golden/test_golden_label_diversity.py`: §20.4; asserts SQL joins `release_label_bridge` and `release_fact` with `COUNT(DISTINCT)`.
+- [X] T105 [P] `tests/golden/test_golden_house_outliers.py`: §20.5; asserts SQL contains `WITH ... STDDEV_SAMP`.
+- [X] T106 [P] `tests/golden/test_golden_master_versions.py`: §20.6; uses `seed.duckdb` (with master_fact); asserts SQL queries `master_fact` ordered by `release_count`. With `seed_no_master.duckdb`, the same test variant asserts the run ends `failed_unsupported`.
 
 ### Distinct-tools assertion (SC-006)
 
-- [ ] T107 `tests/integration/test_distinct_tools_count.py`: runs the simple golden query, queries `agent_tool_calls` for the resulting `run_id`, asserts the COUNT(DISTINCT tool_name) ≥ 5 (7 expected per [contracts/tools.md §5](./contracts/tools.md)).
+- [X] T107 `tests/integration/test_distinct_tools_count.py`: runs the simple golden query, queries `agent_tool_calls` for the resulting `run_id`, asserts the COUNT(DISTINCT tool_name) ≥ 5 (7 expected per [contracts/tools.md §5](./contracts/tools.md)).
 
 ### Cross-cutting cleanup
 
-- [ ] T108 [P] Run `ruff check agent/` and fix any lint issues. Run `ruff format agent/`.
-- [ ] T109 [P] Run `mypy --strict agent/src/discogs_agent` and fix any type errors. Add `# type: ignore[<rule>]` only where third-party stubs are missing (langgraph or langchain-openai may need this) — never in our own code.
-- [ ] T110 Run the full test suite: `pytest agent/tests/`. Confirm 100% pass, including all golden tests. Capture coverage with `pytest --cov=discogs_agent --cov-report=term`. Document achieved coverage in `agent/README.md`.
+- [X] T108 [P] Run `ruff check agent/` and fix any lint issues. Run `ruff format agent/`.
+- [X] T109 [P] Run `mypy --strict agent/src/discogs_agent` and fix any type errors. Add `# type: ignore[<rule>]` only where third-party stubs are missing (langgraph or langchain-openai may need this) — never in our own code.
+- [X] T110 Run the full test suite: `pytest agent/tests/`. Confirm 100% pass, including all golden tests. Capture coverage with `pytest --cov=discogs_agent --cov-report=term`. Document achieved coverage in `agent/README.md`.
 - [ ] T111 Walk [quickstart.md](./quickstart.md) §1 through §10 manually against a fresh checkout (or a `git stash`-ed working tree) with the seed DuckDB symlinked into `data/published/duckdb/discogs.duckdb`. Capture timing for SC-001 (15-min target). Document any deviations in `agent/README.md`.
-- [ ] T112 Optional but recommended: export the compiled LangGraph as a Mermaid diagram via `graph.builder.get_graph().draw_mermaid()`, save to `agent/docs/graph.mmd`. Reference it from `agent/README.md`.
+- [X] T112 Optional but recommended: export the compiled LangGraph as a Mermaid diagram via `graph.builder.get_graph().draw_mermaid()`, save to `agent/docs/graph.mmd`. Reference it from `agent/README.md`.
 
 **Checkpoint**: V1 ready to demo. SC-001 through SC-010 all verifiable. The branch is mergeable.
 

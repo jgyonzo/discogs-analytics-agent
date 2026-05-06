@@ -32,9 +32,7 @@ def test_thread_and_run_survive_engine_recycle(tmp_path: Path) -> None:
     Base.metadata.create_all(engine_a)
     from sqlalchemy.orm import sessionmaker
 
-    SessionA = sessionmaker(
-        bind=engine_a, expire_on_commit=False, future=True
-    )
+    SessionA = sessionmaker(bind=engine_a, expire_on_commit=False, future=True)
     session_a = SessionA()
     try:
         thread = ThreadRepo(session_a).create()
@@ -49,9 +47,7 @@ def test_thread_and_run_survive_engine_recycle(tmp_path: Path) -> None:
 
     # Round 2 — fresh engine pointed at the same file.
     engine_b = engine_factory(db_url)
-    SessionB = sessionmaker(
-        bind=engine_b, expire_on_commit=False, future=True
-    )
+    SessionB = sessionmaker(bind=engine_b, expire_on_commit=False, future=True)
     session_b = SessionB()
     try:
         thread_again = ThreadRepo(session_b).get(thread_id)
@@ -75,17 +71,13 @@ def test_finalized_run_survives_engine_recycle(tmp_path: Path) -> None:
     Base.metadata.create_all(engine_a)
     from sqlalchemy.orm import sessionmaker
 
-    SessionA = sessionmaker(
-        bind=engine_a, expire_on_commit=False, future=True
-    )
+    SessionA = sessionmaker(bind=engine_a, expire_on_commit=False, future=True)
     session_a = SessionA()
     try:
         thread = ThreadRepo(session_a).create()
         run_repo = RunRepo(session_a)
         run = run_repo.create(thread.thread_id, "trend query")
-        run_repo.update_route(
-            run.run_id, complexity="simple", selected_model="gpt-4o-mini"
-        )
+        run_repo.update_route(run.run_id, complexity="simple", selected_model="gpt-4o-mini")
         run_repo.update_generated_sql(
             run.run_id,
             "SELECT decade, COUNT(DISTINCT release_id) FROM release_fact "
@@ -105,9 +97,7 @@ def test_finalized_run_survives_engine_recycle(tmp_path: Path) -> None:
     reset_engine()
 
     engine_b = engine_factory(db_url)
-    SessionB = sessionmaker(
-        bind=engine_b, expire_on_commit=False, future=True
-    )
+    SessionB = sessionmaker(bind=engine_b, expire_on_commit=False, future=True)
     session_b = SessionB()
     try:
         run_again = RunRepo(session_b).get(run_id)
@@ -145,9 +135,7 @@ def test_run_survives_engine_recycle_against_postgres() -> None:
         Base.metadata.create_all(engine_a)
         from sqlalchemy.orm import sessionmaker
 
-        SessionA = sessionmaker(
-            bind=engine_a, expire_on_commit=False, future=True
-        )
+        SessionA = sessionmaker(bind=engine_a, expire_on_commit=False, future=True)
         session_a = SessionA()
         try:
             thread = ThreadRepo(session_a).create()
@@ -160,9 +148,7 @@ def test_run_survives_engine_recycle_against_postgres() -> None:
         reset_engine()
 
         engine_b = engine_factory(url)
-        SessionB = sessionmaker(
-            bind=engine_b, expire_on_commit=False, future=True
-        )
+        SessionB = sessionmaker(bind=engine_b, expire_on_commit=False, future=True)
         session_b = SessionB()
         try:
             run_again = RunRepo(session_b).get(run_id)

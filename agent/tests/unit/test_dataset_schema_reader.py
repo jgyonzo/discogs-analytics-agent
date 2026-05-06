@@ -32,9 +32,7 @@ def test_reads_seed_with_master(seed_duckdb: Path) -> None:
 
 def test_reads_seed_without_master(seed_duckdb_no_master: Path) -> None:
     with use_node("load_schema"):
-        out = dataset_schema_reader(
-            SchemaReaderInput(duckdb_path=str(seed_duckdb_no_master))
-        )
+        out = dataset_schema_reader(SchemaReaderInput(duckdb_path=str(seed_duckdb_no_master)))
     assert out.has_master_fact is False
     assert "master_fact" not in out.tables
     # Core tables still present.

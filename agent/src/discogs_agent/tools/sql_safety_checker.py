@@ -10,7 +10,8 @@ from __future__ import annotations
 
 import ast
 import re
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 import duckdb
 import sqlparse
@@ -39,9 +40,25 @@ class SafetyOutput(BaseModel):
 
 
 _FORBIDDEN_KEYWORDS = {
-    "INSERT", "UPDATE", "DELETE", "MERGE", "DROP", "ALTER", "CREATE",
-    "TRUNCATE", "COPY", "EXPORT", "IMPORT", "INSTALL", "LOAD", "ATTACH",
-    "DETACH", "PRAGMA", "BEGIN", "COMMIT", "ROLLBACK",
+    "INSERT",
+    "UPDATE",
+    "DELETE",
+    "MERGE",
+    "DROP",
+    "ALTER",
+    "CREATE",
+    "TRUNCATE",
+    "COPY",
+    "EXPORT",
+    "IMPORT",
+    "INSTALL",
+    "LOAD",
+    "ATTACH",
+    "DETACH",
+    "PRAGMA",
+    "BEGIN",
+    "COMMIT",
+    "ROLLBACK",
 }
 
 _FORBIDDEN_FUNCTION_PATTERNS = [
@@ -70,7 +87,7 @@ _FORBIDDEN_FUNCTION_PATTERNS = [
 def _scan_ddl_dml(sql: str) -> list[SafetyViolation]:
     violations: list[SafetyViolation] = []
     for stmt in sqlparse.parse(sql):
-        first = stmt.token_first(skip_ws=True, skip_cm=True)
+        first = stmt.token_first(skip_ws=True, skip_cm=True)  # type: ignore[no-untyped-call]
         if first is None:
             continue
         kw = first.normalized.upper()
@@ -87,9 +104,7 @@ def _scan_forbidden_functions(sql: str) -> list[SafetyViolation]:
     for pattern in _FORBIDDEN_FUNCTION_PATTERNS:
         match = pattern.search(sql)
         if match:
-            violations.append(
-                SafetyViolation(rule="forbidden_function", detail=match.group(0))
-            )
+            violations.append(SafetyViolation(rule="forbidden_function", detail=match.group(0)))
     return violations
 
 
@@ -137,9 +152,15 @@ def _extract_sql(generated_code: str) -> tuple[str | None, bool, list[SafetyViol
     extractor.visit(tree)
 
     if not extractor.captured:
-        return None, extractor.has_read_only_connect, [
-            SafetyViolation(rule="no_sql_extracted", detail="no `sql=` or `.execute(...)` literal found"),
-        ]
+        return (
+            None,
+            extractor.has_read_only_connect,
+            [
+                SafetyViolation(
+                    rule="no_sql_extracted", detail="no `sql=` or `.execute(...)` literal found"
+                ),
+            ],
+        )
     # If multiple SQL strings, concat them and let pass-2 evaluate — in
     # V1 the canonical template emits exactly one.
     return extractor.captured[0], extractor.has_read_only_connect, []
@@ -148,7 +169,9 @@ def _extract_sql(generated_code: str) -> tuple[str | None, bool, list[SafetyViol
 # ─── Pass 2: EXPLAIN against in-memory schema stub ────────────────────
 
 
-def _stub_explain_check(sql: str, schema_context: dict[str, Any]) -> tuple[str | None, list[SafetyViolation]]:
+def _stub_explain_check(
+    sql: str, schema_context: dict[str, Any]
+) -> tuple[str | None, list[SafetyViolation]]:
     """Run EXPLAIN against an in-memory DuckDB whose catalog has the
     same allowlisted tables (empty stubs). Inspect the plan for
     references to non-allowlisted tables."""
@@ -167,8 +190,7 @@ def _stub_explain_check(sql: str, schema_context: dict[str, Any]) -> tuple[str |
             except duckdb.Error:
                 # Some types may not parse as DuckDB DDL types; fall back to VARCHAR.
                 fallback = ", ".join(
-                    f'"{(c["name"] if isinstance(c, dict) else c.name)}" VARCHAR'
-                    for c in cols
+                    f'"{(c["name"] if isinstance(c, dict) else c.name)}" VARCHAR' for c in cols
                 )
                 con.execute(f'CREATE TABLE "{tbl}" ({fallback})')
 
@@ -188,9 +210,7 @@ def _stub_explain_check(sql: str, schema_context: dict[str, Any]) -> tuple[str |
         for pat in _FORBIDDEN_FUNCTION_PATTERNS:
             m = pat.search(plan_text)
             if m:
-                violations.append(
-                    SafetyViolation(rule="forbidden_function", detail=m.group(0))
-                )
+                violations.append(SafetyViolation(rule="forbidden_function", detail=m.group(0)))
 
         return plan_text, violations
     finally:
@@ -295,9 +315,11 @@ def _scan_forbidden_tables(
 ) -> list[SafetyViolation]:
     """Catch references to tables not in the runtime allowlist (which
     excludes master_fact when the snapshot lacks it)."""
-    runtime_tables = set(schema_context.get("tables", {}).keys()) if isinstance(
-        schema_context.get("tables"), dict
-    ) else set()
+    runtime_tables = (
+        set(schema_context.get("tables", {}).keys())
+        if isinstance(schema_context.get("tables"), dict)
+        else set()
+    )
     violations: list[SafetyViolation] = []
     referenced = {m.group(1) for m in _TABLE_REF_PATTERN.finditer(sql)}
     for ref in referenced:

@@ -128,9 +128,7 @@ def run_in_sandbox(
         if "_error" in payload_dict:
             exception_type = exception_type or payload_dict.get("_error")
             exception_message = (
-                exception_message
-                or payload_dict.get("_message")
-                or payload_dict.get("_traceback")
+                exception_message or payload_dict.get("_message") or payload_dict.get("_traceback")
             )
             result = None
         else:

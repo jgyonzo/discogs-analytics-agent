@@ -10,8 +10,7 @@ from __future__ import annotations
 from pathlib import Path
 
 PROMPT_PATH = (
-    Path(__file__).resolve().parents[2]
-    / "src" / "discogs_agent" / "prompts" / "code_generator.md"
+    Path(__file__).resolve().parents[2] / "src" / "discogs_agent" / "prompts" / "code_generator.md"
 )
 
 

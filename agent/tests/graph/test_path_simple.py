@@ -9,9 +9,7 @@ from discogs_agent.persistence.repositories import ToolCallRepo
 
 
 def test_simple_path(agent_env: dict) -> None:
-    resp = agent_env["post_query"](
-        agent_env["QueryRequest"](message="Show releases by decade.")
-    )
+    resp = agent_env["post_query"](agent_env["QueryRequest"](message="Show releases by decade."))
     assert resp.status == "succeeded"
     assert resp.route.complexity == "simple"
     assert resp.sql is not None

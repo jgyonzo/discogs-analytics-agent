@@ -43,9 +43,7 @@ _QUESTIONS: tuple[tuple[str, str], ...] = (
 
 
 @pytest.mark.parametrize("question,expected_grain", _QUESTIONS)
-def test_question_picks_expected_grain(
-    agent_env: dict, question: str, expected_grain: str
-) -> None:
+def test_question_picks_expected_grain(agent_env: dict, question: str, expected_grain: str) -> None:
     resp = agent_env["post_query"](
         agent_env["QueryRequest"](message=question),
     )

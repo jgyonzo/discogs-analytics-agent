@@ -51,25 +51,26 @@ def assert_tool_allowed(node: str, tool: str) -> None:
     allowed = NODE_TOOL_ALLOWLIST.get(node, frozenset())
     if tool not in allowed:
         raise ToolNotAllowedError(
-            f"Node {node!r} is not allowed to call tool {tool!r}. "
-            f"Allowed: {sorted(allowed)}"
+            f"Node {node!r} is not allowed to call tool {tool!r}. Allowed: {sorted(allowed)}"
         )
 
 
 # ─── Secret-shaped key redaction ─────────────────────────────────────
 
 
-_SECRET_KEYS = {"api_key", "openai_api_key", "database_url", "aws_access_key_id",
-                "aws_secret_access_key"}
+_SECRET_KEYS = {
+    "api_key",
+    "openai_api_key",
+    "database_url",
+    "aws_access_key_id",
+    "aws_secret_access_key",
+}
 
 
 def _redact(payload: Any) -> Any:
     """Recursively replace known-secret-shaped values with `***`."""
     if isinstance(payload, dict):
-        return {
-            k: ("***" if k.lower() in _SECRET_KEYS else _redact(v))
-            for k, v in payload.items()
-        }
+        return {k: ("***" if k.lower() in _SECRET_KEYS else _redact(v)) for k, v in payload.items()}
     if isinstance(payload, list):
         return [_redact(x) for x in payload]
     return payload

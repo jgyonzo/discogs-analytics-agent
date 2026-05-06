@@ -12,11 +12,16 @@ from discogs_agent.llm import stub as stub_module
 def test_complex_path(agent_env: dict) -> None:
     # Pre-register a working SQL string for the diversity query so the
     # stub's code_generator branch produces a valid chart.
-    stub_module.set_responses({
-        ("router", stub_module._hash_query("Which labels have the most stylistic diversity?")):
-            '{"complexity": "complex", "selected_model": "gpt-4o", "rationale": "Joins required."}',
-        ("query_understanding", stub_module._hash_query("Which labels have the most stylistic diversity?")):
-            '''{"analysis_intent": "top_n",
+    stub_module.set_responses(
+        {
+            (
+                "router",
+                stub_module._hash_query("Which labels have the most stylistic diversity?"),
+            ): '{"complexity": "complex", "selected_model": "gpt-4o", "rationale": "Joins required."}',
+            (
+                "query_understanding",
+                stub_module._hash_query("Which labels have the most stylistic diversity?"),
+            ): """{"analysis_intent": "top_n",
              "tables": ["release_label_bridge", "release_fact"],
              "dimensions": ["label_name"],
              "metrics": [
@@ -25,9 +30,11 @@ def test_complex_path(agent_env: dict) -> None:
              ],
              "filters": [],
              "chart_type": "bar",
-             "notes": "join via release_id"}''',
-        ("code_generator", stub_module._hash_query("Which labels have the most stylistic diversity?")):
-            '''import duckdb
+             "notes": "join via release_id"}""",
+            (
+                "code_generator",
+                stub_module._hash_query("Which labels have the most stylistic diversity?"),
+            ): '''import duckdb
 import pandas as pd
 import plotly.express as px
 from pathlib import Path
@@ -52,7 +59,8 @@ chart_path = ARTIFACT_DIR / "chart.html"
 fig.write_html(str(chart_path), include_plotlyjs="inline")
 RESULT = {"sql": sql, "chart_path": str(chart_path), "dataframe_preview": df.head(20).to_dict(orient="records"), "row_count": len(df), "chart_type": "bar"}
 ''',
-    })
+        }
+    )
 
     resp = agent_env["post_query"](
         agent_env["QueryRequest"](message="Which labels have the most stylistic diversity?")

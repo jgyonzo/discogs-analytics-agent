@@ -44,8 +44,10 @@ def health() -> JSONResponse:
 # a circular import where /query needs the graph builder and the
 # graph builder needs the settings module.
 def _register_routes() -> None:
-    from discogs_agent import api_admin  # noqa: F401
-    from discogs_agent import api_query  # noqa: F401
+    from discogs_agent import (
+        api_admin,  # noqa: F401
+        api_query,  # noqa: F401
+    )
 
 
 _register_routes()

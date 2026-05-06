@@ -6,8 +6,6 @@ must use COUNT(DISTINCT release_id) (or release_unique_view).
 
 from __future__ import annotations
 
-from pathlib import Path
-
 
 def test_simple_query_returns_chart(agent_env: dict) -> None:
     resp = agent_env["post_query"](
@@ -23,9 +21,7 @@ def test_simple_query_returns_chart(agent_env: dict) -> None:
     assert len(resp.dataframe_preview) > 0
 
     # The chart artifact file exists on disk.
-    chart_dir = (
-        agent_env["artifacts"] / resp.thread_id / resp.run_id
-    )
+    chart_dir = agent_env["artifacts"] / resp.thread_id / resp.run_id
     chart_files = list(chart_dir.glob("*.html"))
     assert chart_files, f"no .html under {chart_dir}"
     assert chart_files[0].stat().st_size > 0

@@ -7,9 +7,8 @@ binaries. Byte-equality is not asserted — DuckDB internals change.
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import importlib.util
+from pathlib import Path
 
 import duckdb
 import pytest

@@ -15,9 +15,7 @@ from discogs_agent.llm.client import get_chat_client
 from discogs_agent.observability.tracing import now_ms, use_node
 from discogs_agent.tools.cost_logger import CostInput, cost_logger
 
-PROMPT_PATH = (
-    Path(__file__).parent.parent.parent / "prompts" / "response_synthesizer.md"
-)
+PROMPT_PATH = Path(__file__).parent.parent.parent / "prompts" / "response_synthesizer.md"
 
 
 def response_synthesizer_node(state: AgentState) -> AgentState:
@@ -103,8 +101,7 @@ def _build_result_block(state: AgentState) -> str:
     )
     if is_empty:
         parts.append(
-            "Result: no matching releases. The query ran successfully but "
-            "returned zero rows."
+            "Result: no matching releases. The query ran successfully but returned zero rows."
         )
         parts.append(
             "Diagnostic hint: if you were filtering by a musical style "
@@ -132,7 +129,7 @@ def _strip_traceback_artifacts(text: str) -> str:
     The prompt forbids them; this ensures even if the model leaks one,
     it doesn't reach the user.
     """
-    bad_markers = ("Traceback (most recent call last)", "  File \"", "OPENAI_API_KEY")
+    bad_markers = ("Traceback (most recent call last)", '  File "', "OPENAI_API_KEY")
     cleaned = []
     for line in text.splitlines():
         if any(marker in line for marker in bad_markers):

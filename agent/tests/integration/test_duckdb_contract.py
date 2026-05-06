@@ -22,8 +22,8 @@ def test_duckdb_byte_equal_after_query_batch(agent_env: dict) -> None:
     queries = [
         "Show releases by decade.",
         "Show the evolution of Techno releases over time",
-        "What is the average price of Techno releases?",       # unsupported
-        "Show me the best labels.",                            # clarification
+        "What is the average price of Techno releases?",  # unsupported
+        "Show me the best labels.",  # clarification
     ]
     for q in queries:
         resp = agent_env["post_query"](agent_env["QueryRequest"](message=q))

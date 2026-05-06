@@ -6,7 +6,7 @@ persistence shim need, nothing more.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 from uuid import UUID, uuid4
@@ -22,7 +22,6 @@ from discogs_agent.persistence.models import (
     Thread,
     ToolCall,
 )
-
 
 # ─── Threads ──────────────────────────────────────────────────────────
 
@@ -47,7 +46,7 @@ class ThreadRepo:
     def touch(self, thread_id: UUID) -> None:
         t = self.get(thread_id)
         if t is not None:
-            t.updated_at = datetime.now(timezone.utc)
+            t.updated_at = datetime.now(UTC)
 
 
 # ─── Runs ─────────────────────────────────────────────────────────────
@@ -106,7 +105,7 @@ class RunRepo:
             return
         r.status = status
         r.final_response = final_response
-        r.finished_at = datetime.now(timezone.utc)
+        r.finished_at = datetime.now(UTC)
         r.latency_ms = latency_ms
 
     def list_by_thread(
@@ -127,9 +126,7 @@ class RunRepo:
     def count_by_thread(self, thread_id: UUID) -> int:
         from sqlalchemy import func as _func
 
-        stmt = select(_func.count()).select_from(Run).where(
-            Run.thread_id == thread_id
-        )
+        stmt = select(_func.count()).select_from(Run).where(Run.thread_id == thread_id)
         return int(self.session.scalar(stmt) or 0)
 
     def fetch_recent_for_thread(
@@ -194,11 +191,7 @@ class ToolCallRepo:
         return tc
 
     def list_by_run(self, run_id: UUID) -> list[ToolCall]:
-        stmt = (
-            select(ToolCall)
-            .where(ToolCall.run_id == run_id)
-            .order_by(ToolCall.created_at)
-        )
+        stmt = select(ToolCall).where(ToolCall.run_id == run_id).order_by(ToolCall.created_at)
         return list(self.session.scalars(stmt))
 
 
@@ -235,11 +228,7 @@ class ModelUsageRepo:
         return mu
 
     def list_by_run(self, run_id: UUID) -> list[ModelUsage]:
-        stmt = (
-            select(ModelUsage)
-            .where(ModelUsage.run_id == run_id)
-            .order_by(ModelUsage.created_at)
-        )
+        stmt = select(ModelUsage).where(ModelUsage.run_id == run_id).order_by(ModelUsage.created_at)
         return list(self.session.scalars(stmt))
 
 
@@ -274,11 +263,7 @@ class ArtifactRepo:
         return self.session.get(Artifact, artifact_id)
 
     def list_by_run(self, run_id: UUID) -> list[Artifact]:
-        stmt = (
-            select(Artifact)
-            .where(Artifact.run_id == run_id)
-            .order_by(Artifact.created_at)
-        )
+        stmt = select(Artifact).where(Artifact.run_id == run_id).order_by(Artifact.created_at)
         return list(self.session.scalars(stmt))
 
 
@@ -310,9 +295,5 @@ class ErrorRepo:
         return e
 
     def list_by_run(self, run_id: UUID) -> list[Error]:
-        stmt = (
-            select(Error)
-            .where(Error.run_id == run_id)
-            .order_by(Error.created_at)
-        )
+        stmt = select(Error).where(Error.run_id == run_id).order_by(Error.created_at)
         return list(self.session.scalars(stmt))

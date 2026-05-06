@@ -28,9 +28,16 @@ def _reset_cache() -> None:
 def test_schema_context_has_new_fields(seed_duckdb: Path) -> None:
     ctx = read_schema_context(str(seed_duckdb))
     for key in (
-        "tables", "has_master_fact", "duckdb_path", "captured_at",
-        "warnings", "sample_values", "domain_glossary",
-        "published_run_id", "rendered_block", "rendered_token_count",
+        "tables",
+        "has_master_fact",
+        "duckdb_path",
+        "captured_at",
+        "warnings",
+        "sample_values",
+        "domain_glossary",
+        "published_run_id",
+        "rendered_block",
+        "rendered_token_count",
     ):
         assert key in ctx, f"missing key {key!r}"
 
@@ -41,9 +48,7 @@ def test_schema_context_sample_values_for_seed(seed_duckdb: Path) -> None:
     # release_unique_view samples — primary_genre is required.
     assert "release_unique_view" in samples
     assert "primary_genre" in samples["release_unique_view"]
-    primary_genres = {
-        s["value"] for s in samples["release_unique_view"]["primary_genre"]
-    }
+    primary_genres = {s["value"] for s in samples["release_unique_view"]["primary_genre"]}
     assert "Electronic" in primary_genres
     # release_fact.style — must include the canonical styles seeded.
     assert "release_fact" in samples

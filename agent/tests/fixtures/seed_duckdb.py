@@ -37,11 +37,11 @@ _RELEASES_BASE = [
     (1011, 1990, 1995, "UK", True, True),  # Ambient
     (1012, 2000, 2003, "UK", True, True),  # Drum n Bass
     (1013, 1990, 1996, "DE", True, True),  # Trance
-    (1014, 1980, 1989, "JM", True, False), # Dub
-    (1015, 1990, 1994, "UK", True, False), # Garage
-    (1016, 1970, 1978, "US", True, False), # Disco
-    (1017, 1980, 1987, "UK", True, False), # Acid Jazz
-    (1018, 1970, 1973, "US", True, False), # Funk
+    (1014, 1980, 1989, "JM", True, False),  # Dub
+    (1015, 1990, 1994, "UK", True, False),  # Garage
+    (1016, 1970, 1978, "US", True, False),  # Disco
+    (1017, 1980, 1987, "UK", True, False),  # Acid Jazz
+    (1018, 1970, 1973, "US", True, False),  # Funk
 ]
 
 # (release_id, style, style_order)
@@ -174,8 +174,18 @@ def _setup_release_fact(con: duckdb.DuckDBPyConnection) -> None:
         styles_for_r = [s for s in _RELEASE_STYLES if s[0] == rid]
         for _, style, style_order in styles_for_r:
             rows.append(
-                (rid, decade, year, country, has_vinyl, has_cd,
-                 style, style_order, primary_genre, master_id)
+                (
+                    rid,
+                    decade,
+                    year,
+                    country,
+                    has_vinyl,
+                    has_cd,
+                    style,
+                    style_order,
+                    primary_genre,
+                    master_id,
+                )
             )
     con.executemany(
         "INSERT INTO release_fact VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",

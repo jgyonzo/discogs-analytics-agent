@@ -51,9 +51,7 @@ def code_generator_node(state: AgentState) -> AgentState:
         )
     else:
         # Repair prompt — surface the failure details.
-        failure_details = "\n".join(
-            _format_failures(state)
-        ) or "(no specific failure recorded)"
+        failure_details = "\n".join(_format_failures(state)) or "(no specific failure recorded)"
         template = (PROMPTS_DIR / "repair_code.md").read_text(encoding="utf-8")
         system_body = template.format(
             schema_context_block=schema_block,
@@ -105,5 +103,7 @@ def _format_failures(state: AgentState) -> list[str]:
     execution = state.get("execution_result")
     if isinstance(execution, dict):
         if execution.get("exception_type"):
-            parts.append(f"Sandbox exception: {execution['exception_type']}: {execution.get('exception_message', '')}")
+            parts.append(
+                f"Sandbox exception: {execution['exception_type']}: {execution.get('exception_message', '')}"
+            )
     return parts

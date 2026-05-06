@@ -36,9 +36,7 @@ def test_health_against_postgres_and_seed_duckdb(
     try:
         url = pg.get_connection_url().replace("psycopg2", "psycopg")
         monkeypatch.setattr(settings, "DATABASE_URL", url)
-        monkeypatch.setattr(
-            settings, "ANALYTICS_DUCKDB_PATH", str(seed_duckdb)
-        )
+        monkeypatch.setattr(settings, "ANALYTICS_DUCKDB_PATH", str(seed_duckdb))
         schema_module.reset_schema_cache()
         reset_engine()
         engine = init_engine(url)

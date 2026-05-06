@@ -30,18 +30,19 @@ def test_runs_endpoint_no_secret_leak_on_sandbox_failure(
 
     qhash = stub_module._hash_query("force runtime exception")
 
-    bad_code = '''import duckdb
+    bad_code = """import duckdb
 import os
 con = duckdb.connect(os.environ["ANALYTICS_DUCKDB_PATH"], read_only=True)
 sql = "SELECT decade FROM release_unique_view"
 df = con.execute(sql).df()
 raise RuntimeError("forced failure")
-'''
+"""
 
     original_invoke = stub_module.StubChatModel.invoke
 
     def patched(self, messages):
         from discogs_agent.observability.tracing import node_context
+
         if node_context.get() == "code_generator":
             return stub_module._StubResponse(
                 content=bad_code, usage={"prompt_tokens": 10, "completion_tokens": 10}
@@ -49,16 +50,18 @@ raise RuntimeError("forced failure")
         return original_invoke(self, messages)
 
     stub_module.StubChatModel.invoke = patched
-    stub_module.set_responses({
-        ("router", qhash):
-            '{"complexity": "simple", "selected_model": "gpt-4o-mini", "rationale": "stub"}',
-        ("query_understanding", qhash): stub_module._PLAN_BY_DECADE,
-    })
+    stub_module.set_responses(
+        {
+            (
+                "router",
+                qhash,
+            ): '{"complexity": "simple", "selected_model": "gpt-4o-mini", "rationale": "stub"}',
+            ("query_understanding", qhash): stub_module._PLAN_BY_DECADE,
+        }
+    )
 
     try:
-        resp = agent_env["post_query"](
-            agent_env["QueryRequest"](message="force runtime exception")
-        )
+        resp = agent_env["post_query"](agent_env["QueryRequest"](message="force runtime exception"))
     finally:
         stub_module.StubChatModel.invoke = original_invoke
 
@@ -77,10 +80,10 @@ raise RuntimeError("forced failure")
             error_type="sandbox_exception",
             error_message="RuntimeError: forced failure",
             traceback=(
-                'Traceback (most recent call last):\n'
+                "Traceback (most recent call last):\n"
                 '  File "/sandbox/generated.py", line 5, in <module>\n'
                 "    raise RuntimeError('forced failure')\n"
-                'OPENAI_API_KEY=sk-leaky-secret\n'
+                "OPENAI_API_KEY=sk-leaky-secret\n"
                 "RuntimeError: forced failure"
             ),
         )

@@ -60,7 +60,9 @@ def test_sandbox_timeout(tmp_path: Path, seed_duckdb: Path) -> None:
     assert outcome.result is None
 
 
-def test_sandbox_no_secret_leak(tmp_path: Path, seed_duckdb: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_sandbox_no_secret_leak(
+    tmp_path: Path, seed_duckdb: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """OPENAI_API_KEY / DATABASE_URL set in the parent must NOT be
     visible to the subprocess."""
     monkeypatch.setenv("OPENAI_API_KEY", "sk-leak-test-12345")
@@ -113,10 +115,11 @@ def test_sandbox_runs_seed_query(tmp_path: Path, seed_duckdb: Path) -> None:
     """End-to-end: sandbox can read the seed DuckDB and produce a chart."""
     from discogs_agent.config import settings
     from discogs_agent.tools.sandbox_executor import SandboxInput, sandbox_executor
+
     settings.ANALYTICS_DUCKDB_PATH = str(seed_duckdb)
     settings.ARTIFACTS_DIR = str(tmp_path)
 
-    code = '''import duckdb
+    code = """import duckdb
 import pandas as pd
 import plotly.express as px
 from pathlib import Path
@@ -132,16 +135,18 @@ fig = px.bar(df, x="decade", y="releases", title="t")
 chart_path = ARTIFACT_DIR / "chart.html"
 fig.write_html(str(chart_path), include_plotlyjs="inline")
 RESULT = {"sql": sql, "chart_path": str(chart_path), "dataframe_preview": df.head(20).to_dict(orient="records"), "row_count": len(df), "chart_type": "bar"}
-'''
+"""
     thread_id = str(uuid4())
     run_id = str(uuid4())
     with use_node("sandbox_executor"):
-        out = sandbox_executor(SandboxInput(
-            generated_code=code,
-            thread_id=thread_id,
-            run_id=run_id,
-            timeout_seconds=30,
-        ))
+        out = sandbox_executor(
+            SandboxInput(
+                generated_code=code,
+                thread_id=thread_id,
+                run_id=run_id,
+                timeout_seconds=30,
+            )
+        )
     assert out.exit_code == 0
     assert out.result is not None
     assert out.result["chart_type"] == "bar"

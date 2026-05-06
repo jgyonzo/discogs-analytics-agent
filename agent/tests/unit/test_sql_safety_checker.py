@@ -30,9 +30,7 @@ def schema(seed_duckdb: Path) -> dict:
 def schema_no_master(seed_duckdb_no_master: Path) -> dict:
     schema_module.reset_schema_cache()
     with use_node("load_schema"):
-        out = dataset_schema_reader(
-            SchemaReaderInput(duckdb_path=str(seed_duckdb_no_master))
-        )
+        out = dataset_schema_reader(SchemaReaderInput(duckdb_path=str(seed_duckdb_no_master)))
     return out.model_dump()
 
 
@@ -49,9 +47,7 @@ df = con.execute(sql).df()
 
 def _run(generated_code: str, schema: dict):
     with use_node("sql_safety_checker"):
-        return sql_safety_checker(
-            SafetyInput(generated_code=generated_code, schema_context=schema)
-        )
+        return sql_safety_checker(SafetyInput(generated_code=generated_code, schema_context=schema))
 
 
 # ─── Pass 0 ── DDL/DML scan ──
@@ -64,7 +60,12 @@ def test_safety_blocks_drop(schema: dict) -> None:
 
 
 def test_safety_blocks_insert(schema: dict) -> None:
-    out = _run(_wrap("INSERT INTO release_fact VALUES (1, 1990, 1995, 'US', TRUE, FALSE, 'Techno', 1, 'Electronic', NULL)"), schema)
+    out = _run(
+        _wrap(
+            "INSERT INTO release_fact VALUES (1, 1990, 1995, 'US', TRUE, FALSE, 'Techno', 1, 'Electronic', NULL)"
+        ),
+        schema,
+    )
     assert out.allowed is False
     assert any(v.rule == "ddl_dml" for v in out.violations)
 

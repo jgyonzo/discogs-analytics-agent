@@ -40,11 +40,7 @@ def _format_turn(idx: int, turn: PriorTurn) -> str:
 
 def _format_preamble(turns: list[PriorTurn]) -> str:
     body = "\n".join(_format_turn(i + 1, t) for i, t in enumerate(turns))
-    return (
-        "Recent conversation (prior user questions in this thread, "
-        "oldest first):\n"
-        f"{body}\n"
-    )
+    return f"Recent conversation (prior user questions in this thread, oldest first):\n{body}\n"
 
 
 def build_carryover_preamble(

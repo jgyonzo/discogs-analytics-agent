@@ -34,9 +34,7 @@ _CANONICAL_STYLES = (
 
 
 @pytest.mark.parametrize("style", _CANONICAL_STYLES)
-def test_canonical_style_returns_non_empty_result(
-    agent_env: dict, style: str
-) -> None:
+def test_canonical_style_returns_non_empty_result(agent_env: dict, style: str) -> None:
     resp = agent_env["post_query"](
         agent_env["QueryRequest"](
             message=f"Show the evolution of {style} releases over time",
@@ -44,8 +42,7 @@ def test_canonical_style_returns_non_empty_result(
     )
 
     assert resp.status == "succeeded", (
-        f"{style!r}: status was {resp.status!r}, expected 'succeeded'. "
-        f"sql={resp.sql!r}"
+        f"{style!r}: status was {resp.status!r}, expected 'succeeded'. sql={resp.sql!r}"
     )
     assert resp.row_count > 0, (
         f"{style!r}: row_count={resp.row_count}, expected > 0. SQL: {resp.sql!r}"
@@ -58,9 +55,7 @@ def test_canonical_style_returns_non_empty_result(
     assert "release_fact" in sql_lower, (
         f"{style!r}: SQL did not query release_fact. SQL: {resp.sql!r}"
     )
-    assert f"style = '{style.lower()}'" in sql_lower or f'style="{style}"' in (
-        resp.sql or ""
-    ), (
+    assert f"style = '{style.lower()}'" in sql_lower or f'style="{style}"' in (resp.sql or ""), (
         f"{style!r}: SQL did not filter by `style = '{style}'`. SQL: {resp.sql!r}"
     )
     assert f"primary_genre = '{style.lower()}'" not in sql_lower, (
@@ -80,6 +75,5 @@ def test_canonical_styles_all_succeed(agent_env: dict) -> None:
         if resp.status == "succeeded" and resp.row_count > 0:
             successes += 1
     assert successes == len(_CANONICAL_STYLES), (
-        f"Only {successes}/{len(_CANONICAL_STYLES)} canonical styles produced "
-        "non-empty results."
+        f"Only {successes}/{len(_CANONICAL_STYLES)} canonical styles produced non-empty results."
     )

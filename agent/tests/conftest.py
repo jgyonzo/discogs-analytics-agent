@@ -25,7 +25,6 @@ from discogs_agent.config import settings
 from discogs_agent.persistence.db import engine_factory
 from discogs_agent.persistence.models import Base
 
-
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
 
@@ -199,9 +198,7 @@ def agent_env(seed_duckdb: Path, tmp_path: Path) -> Iterator[dict]:
 
 
 @pytest.fixture
-def agent_env_no_master(
-    seed_duckdb_no_master: Path, tmp_path: Path
-) -> Iterator[dict]:
+def agent_env_no_master(seed_duckdb_no_master: Path, tmp_path: Path) -> Iterator[dict]:
     """Same as agent_env but pointed at the master_fact-less seed."""
     from discogs_agent.api_query import (
         QueryRequest,
