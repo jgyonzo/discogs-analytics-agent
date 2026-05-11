@@ -1,8 +1,17 @@
-# Successor pointer: future ETL-component spec (`014-release-unique-view-materialization`)
+# Successor pointer: future ETL-component spec (`015-release-unique-view-materialization`)
 
 **Source feature**: `013-filtered-aggregation-postmortem`
 **Status**: deferred work — pointer only, no implementation in 013.
 **Target component**: `etl/` (NOT `agent/` — Principle VI separation).
+
+*Note: this document was originally drafted as `successor-014-pointer.md`
+during 013's `/speckit-plan` phase, when "014" was the provisional spec
+number for this deferred ETL fix. On 2026-05-10, the cross-grain-join
+postmortem (`014-cross-grain-join-postmortem`) became the actual
+occupant of 014, so the ETL follow-on was renumbered to "015" by 014's
+FR-018. See
+[`specs/014-cross-grain-join-postmortem/contracts/renumbering-013-pointer.md`](../../014-cross-grain-join-postmortem/contracts/renumbering-013-pointer.md)
+for the renumbering record.*
 
 This document records the deferred ETL-side fix that would resolve the root cause of every `release_unique_view`-induced sandbox OOM-kill. 013 ships agent-layer workarounds (glossary tightening + observability) because the root cause cannot be fixed without crossing the component boundary, and 013's user direction explicitly scoped to `agent/` only.
 
@@ -98,7 +107,7 @@ When the benchmark passes, 013's glossary entry #3 SHOULD be loosened in a subse
 
 This pointer is recorded in 013 (`agent/`-component spec) but the work belongs to `etl/`. 013 does NOT cross the boundary. The future `014` spec, when opened, will:
 
-- Live under `specs/014-release-unique-view-materialization/` (or whichever number is next available at that time).
+- Live under `specs/015-release-unique-view-materialization/` (or whichever number is next available at that time).
 - Touch `etl/` source files (e.g., the analytics-layer producer for `release_unique_view`).
 - Update `specs/001-discogs-etl/contracts/duckdb-schema.md` (the view's definition contract).
 - NOT touch `agent/` (the glossary loosening, if undertaken, would be a separate agent-side amendment).
@@ -119,7 +128,7 @@ If those conditions hold, `014` can be deprioritized indefinitely without compro
 
 ## Provisional naming and timing
 
-- **Spec number**: `014-release-unique-view-materialization` (provisional; may be renumbered when actually opened depending on what other specs land first).
+- **Spec number**: `015-release-unique-view-materialization` (provisional; may be renumbered when actually opened depending on what other specs land first).
 - **Trigger conditions to open it**:
   - A real user question hits the SUM/AVG-over-release-numerics class and produces an `oom_killed` event in production logs.
   - OR a planned demo includes such a question and 013's glossary tightening + memory-pressure hint is judged insufficient UX.

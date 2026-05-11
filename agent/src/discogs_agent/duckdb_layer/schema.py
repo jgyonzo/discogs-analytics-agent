@@ -221,6 +221,13 @@ def _render_join_graph(has_master_fact: bool) -> list[str]:
     lines.append("")
 
     # Cross-grain traversal hints sub-block.
+    #
+    # Updated 2026-05-10 by 014-cross-grain-join-postmortem to resolve the
+    # contradiction with 013's glossary entry #3 (which forbids
+    # release_unique_view in JOIN/GROUP BY). The pre-014 hint recommended
+    # release_unique_view; that path is no longer allowed. The new hint
+    # recommends release_fact and explicitly names release_unique_view as
+    # NOT a usable traversal surface.
     lines.append("Cross-grain traversal hints:")
     if has_master_fact:
         lines.append(
@@ -228,16 +235,21 @@ def _render_join_graph(has_master_fact: bool) -> list[str]:
             "They cannot be compared to each other."
         )
         lines.append(
-            "- To go from master_fact to artists or labels, traverse a release-grain table:"
+            "- To go from master_fact to artists or labels, traverse via release_fact:"
         )
         lines.append(
-            "    master_fact -> release_unique_view (on master_id) "
+            "    master_fact -> release_fact (on master_id) "
             "-> release_artist_bridge (on release_id)"
         )
+        lines.append(
+            "    Use COUNT(DISTINCT release_fact.master_id) for 'works per X' "
+            "and COUNT(DISTINCT release_fact.release_id) for 'releases per X'. "
+            "release_fact has grain release × style, so naive COUNT(*) double-counts."
+        )
     lines.append(
-        "- Prefer release_unique_view (one row per release) over release_fact "
-        "for cross-grain joins; release_fact is row-multiplied by style and "
-        "may inflate counts."
+        "- release_unique_view is NOT a usable traversal surface — it's only "
+        "safe for single-release spot-checks (see glossary entry #3). Always "
+        "traverse through release_fact for cross-grain joins."
     )
     lines.append(
         "- Bridges are NOT unique on release_id — one row per (release × "

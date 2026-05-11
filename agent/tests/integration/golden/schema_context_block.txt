@@ -35,9 +35,10 @@ Edges:
 
 Cross-grain traversal hints:
 - master_id and release_id are DIFFERENT identifier namespaces. They cannot be compared to each other.
-- To go from master_fact to artists or labels, traverse a release-grain table:
-    master_fact -> release_unique_view (on master_id) -> release_artist_bridge (on release_id)
-- Prefer release_unique_view (one row per release) over release_fact for cross-grain joins; release_fact is row-multiplied by style and may inflate counts.
+- To go from master_fact to artists or labels, traverse via release_fact:
+    master_fact -> release_fact (on master_id) -> release_artist_bridge (on release_id)
+    Use COUNT(DISTINCT release_fact.master_id) for 'works per X' and COUNT(DISTINCT release_fact.release_id) for 'releases per X'. release_fact has grain release × style, so naive COUNT(*) double-counts.
+- release_unique_view is NOT a usable traversal surface — it's only safe for single-release spot-checks (see glossary entry #3). Always traverse through release_fact for cross-grain joins.
 - Bridges are NOT unique on release_id — one row per (release × artist) in release_artist_bridge, one row per (release × label) in release_label_bridge.
 
 Forbidden joins (will return semantically wrong rows even if the SQL runs):

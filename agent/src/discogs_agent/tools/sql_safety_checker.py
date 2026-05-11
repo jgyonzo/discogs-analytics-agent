@@ -4,6 +4,8 @@ Two-pass safety check per `contracts/sql-safety.md`:
   Pass 0 — DDL/DML keyword scan via sqlparse.
   Pass 1 — AST extraction of SQL strings + read_only=True assertion.
   Pass 2 — DuckDB EXPLAIN against an in-memory schema-stub catalog.
+  Pass 3 — Forbidden-table re-scan (regex on the SQL string).
+  Pass 4 — Forbidden cross-grain joins (added 014; regex + alias resolver).
 """
 
 from __future__ import annotations
@@ -293,6 +295,21 @@ def _build(
                 explain_plan=plan_text,
             )
 
+        # Forbidden cross-grain joins (added 014). Conditional on
+        # has_master_fact — when master_fact is absent, the cross-grain
+        # bug class is structurally unreachable. See
+        # specs/014-cross-grain-join-postmortem/contracts/sandbox-exception-taxonomy.md.
+        has_master_fact = bool(payload.schema_context.get("has_master_fact"))
+        if has_master_fact:
+            forbidden_join = _scan_forbidden_joins(extracted)
+            if forbidden_join:
+                return SafetyOutput(
+                    allowed=False,
+                    extracted_sql=extracted,
+                    violations=forbidden_join,
+                    explain_plan=plan_text,
+                )
+
         return SafetyOutput(
             allowed=True,
             extracted_sql=extracted,
@@ -362,6 +379,169 @@ def _is_cte_alias(sql: str, name: str) -> bool:
     """True iff `name` appears in the SQL as a CTE definition."""
     aliases = {m.group(1) for m in _CTE_DEFINITION_PATTERN.finditer(sql)}
     return name in aliases
+
+
+# ──────────────────────────────────────────────────────────────────────
+# Forbidden cross-grain joins (added 014-cross-grain-join-postmortem).
+#
+# Promotes the forbidden-joins list from descriptive prose in the
+# rendered schema-context block (009's contribution) to runtime
+# enforcement. Catches LLM hallucinations of cross-grain joins (e.g.,
+# `master_fact.master_id = release_artist_bridge.release_id`) that
+# pre-014 would silently produce a wrong answer because DuckDB happily
+# executes the syntactically-valid (but semantically-meaningless) SQL.
+#
+# Canonical spec: specs/014-cross-grain-join-postmortem/contracts/
+#   amendment-004-sql-safety.md §2.4 + §3.2.4.
+# Mirrored in rendered prose: schema.py _render_join_graph "Forbidden
+#   joins" sub-block (lines 251–260).
+#
+# Adding a pair is a contract amendment to 004/contracts/sql-safety.md.
+# Each pair is (left_table, left_col, right_table, right_col). The
+# scanner checks both orientations (predicate is symmetric).
+# ──────────────────────────────────────────────────────────────────────
+
+_FORBIDDEN_JOIN_PAIRS: tuple[tuple[str, str, str, str], ...] = (
+    ("master_fact", "master_id", "release_artist_bridge", "release_id"),
+    ("master_fact", "master_id", "release_label_bridge", "release_id"),
+    ("master_fact", "main_release_id", "release_artist_bridge", "release_id"),
+    ("master_fact", "main_release_id", "release_label_bridge", "release_id"),
+)
+
+# `main_release_id` joins are sometimes legitimate (the operator wants
+# only the primary release of each master). The rule still fires (hard
+# reject — see research §R2), but the detail string includes a hint so
+# the LLM can adjust on retry.
+_MAIN_RELEASE_ID_HINT = (
+    " (use the master_id traversal instead unless you specifically "
+    "need the primary release of each master)"
+)
+
+
+def _strip_comments(sql: str) -> str:
+    """Strip SQL comments via sqlparse before pattern scanning.
+
+    Defends against false-positives where the SQL legitimately mentions
+    a forbidden join pair inside a comment (e.g., LLM-generated
+    documentation).
+    """
+    return sqlparse.format(sql, strip_comments=True)
+
+
+# SQL keywords that may follow a table reference without introducing an
+# alias. Used in the negative lookahead below to prevent the optional
+# alias group from greedily consuming the next keyword (e.g., `JOIN` in
+# `FROM master_fact JOIN release_artist_bridge`), which would mask the
+# next JOIN's table from finditer.
+_SQL_KEYWORDS_AFTER_TABLE: frozenset[str] = frozenset({
+    "ON", "WHERE", "GROUP", "ORDER", "LIMIT", "HAVING", "JOIN",
+    "LEFT", "RIGHT", "INNER", "FULL", "CROSS", "OUTER", "UNION",
+    "INTERSECT", "EXCEPT", "WITH",
+})
+
+_KEYWORDS_LOOKAHEAD = r"(?:" + "|".join(sorted(_SQL_KEYWORDS_AFTER_TABLE)) + r")\b"
+
+# Match `FROM <table> [AS] <alias>` and `JOIN <table> [AS] <alias>`.
+# Both `FROM master_fact mf` and `FROM master_fact AS mf` are valid.
+# Captures: (1) underlying table name, (2) alias (or empty).
+#
+# The negative lookahead `(?!_KEYWORDS_LOOKAHEAD)` prevents the optional
+# alias group from consuming the next SQL keyword as a phantom alias.
+# Without it, `FROM master_fact JOIN release_artist_bridge` would match
+# (table=master_fact, alias=JOIN) and `re.finditer` would skip past the
+# `JOIN`, never matching the next table.
+_TABLE_ALIAS_PATTERN = re.compile(
+    r"\b(?:FROM|JOIN)\s+([A-Za-z_][A-Za-z0-9_]*)"
+    r"(?:\s+(?:AS\s+)?(?!" + _KEYWORDS_LOOKAHEAD + r")([A-Za-z_][A-Za-z0-9_]*))?",
+    re.IGNORECASE,
+)
+
+
+def _build_alias_map(sql: str) -> dict[str, str]:
+    """Build a {alias_or_table: underlying_table} map from FROM/JOIN clauses.
+
+    Bare-table references (no alias) self-map. Aliased references map to
+    their underlying table. Used to resolve `mf.master_id` →
+    `master_fact.master_id` before checking against
+    `_FORBIDDEN_JOIN_PAIRS`.
+    """
+    alias_map: dict[str, str] = {}
+    for match in _TABLE_ALIAS_PATTERN.finditer(sql):
+        table = match.group(1)
+        alias = match.group(2)
+        # Self-map the table name (so `master_fact.master_id` resolves
+        # to itself even when the query doesn't alias it).
+        alias_map[table] = table
+        if alias and alias.upper() not in _SQL_KEYWORDS_AFTER_TABLE:
+            # Don't self-map a CTE alias to a real table (the CTE name
+            # captured by _CTE_DEFINITION_PATTERN is what should be
+            # treated as table-like, but its "underlying table" is the
+            # CTE itself — we leave CTE refs unmapped so they don't
+            # accidentally match forbidden-pair entries).
+            if not _is_cte_alias(sql, table):
+                alias_map[alias] = table
+    return alias_map
+
+
+# Match `<ref> = <ref>` where each ref is `<alias_or_table>.<column>`.
+# This catches the predicate shape `mf.master_id = rab.release_id`
+# anywhere in the SQL (typically inside an ON clause, but we don't
+# bind to ON specifically — a WHERE clause join via implicit syntax
+# would also be caught, which is desirable).
+_PREDICATE_PATTERN = re.compile(
+    r"([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)"
+    r"\s*=\s*"
+    r"([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)",
+)
+
+
+def _scan_forbidden_joins(sql: str) -> list[SafetyViolation]:
+    """Detect forbidden cross-grain join predicates in the extracted SQL.
+
+    Three-stage algorithm per research §R1:
+      1. Strip SQL comments.
+      2. Build the alias map from FROM/JOIN clauses.
+      3. Scan for `<ref>.<col> = <ref>.<col>` predicates; resolve aliases
+         and check against `_FORBIDDEN_JOIN_PAIRS` in both orientations.
+
+    Returns one SafetyViolation per matched predicate. Detail string uses
+    unqualified table names in canonical form.
+    """
+    cleaned = _strip_comments(sql)
+    alias_map = _build_alias_map(cleaned)
+
+    violations: list[SafetyViolation] = []
+    seen: set[tuple[str, str, str, str]] = set()  # dedupe identical hits
+
+    for match in _PREDICATE_PATTERN.finditer(cleaned):
+        ref_a, col_a, ref_b, col_b = match.group(1, 2, 3, 4)
+        table_a = alias_map.get(ref_a)
+        table_b = alias_map.get(ref_b)
+        if table_a is None or table_b is None:
+            # Either side refers to an unknown alias (e.g., a CTE-
+            # indirected case — see research §R1 known gap).
+            continue
+
+        for pair in _FORBIDDEN_JOIN_PAIRS:
+            pl_t, pl_c, pr_t, pr_c = pair
+            # Check both orientations (predicate is symmetric).
+            forward = (table_a, col_a, table_b, col_b) == pair
+            reverse = (table_b, col_b, table_a, col_a) == pair
+            if not (forward or reverse):
+                continue
+
+            key = pair if forward else (table_b, col_b, table_a, col_a)
+            if key in seen:
+                break
+            seen.add(key)
+
+            detail = f"{pl_t}.{pl_c} = {pr_t}.{pr_c}"
+            if pl_c == "main_release_id":
+                detail += _MAIN_RELEASE_ID_HINT
+            violations.append(SafetyViolation(rule="forbidden_join", detail=detail))
+            break  # don't double-emit for the same pair
+
+    return violations
 
 
 sql_safety_checker = _build()

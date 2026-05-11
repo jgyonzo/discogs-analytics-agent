@@ -142,6 +142,79 @@ acceptable in V1 (e.g., a `SELECT 's3://x'` literal would
 trigger the URL filter — but the LLM has no reason to emit
 such a literal for legitimate queries).
 
+### 2.4 Forbidden cross-grain joins
+
+*Added 2026-05-10 by `014-cross-grain-join-postmortem`. Promotes
+the forbidden-joins list from descriptive prose in the rendered
+schema-context block (009-schema-context-join-graph contribution)
+to runtime enforcement at the `sql_safety_checker` boundary.
+Named incident: run `2557c2ce-21e2-4838-8790-d54528e8043c`
+("top 5 artists with works having the most versions, excluding
+'Various' and 'Unknown Artist'") on 2026-05-10.*
+
+When the LLM generates SQL containing a join predicate of the
+form `<table_a>.<col_a> = <table_b>.<col_b>` where the resolved
+(table, column) pair matches a forbidden cross-grain pair, the
+safety checker MUST emit a
+`SafetyViolation(rule="forbidden_join", detail=<canonical predicate>)`
+and reject with `allowed=False`.
+
+#### Forbidden cross-grain join pairs (initial set)
+
+| Left side | Right side | Severity |
+|---|---|---|
+| `master_fact.master_id` | `release_artist_bridge.release_id` | hard-reject |
+| `master_fact.master_id` | `release_label_bridge.release_id` | hard-reject |
+| `master_fact.main_release_id` | `release_artist_bridge.release_id` | hard-reject |
+| `master_fact.main_release_id` | `release_label_bridge.release_id` | hard-reject |
+
+The list MUST match `_FORBIDDEN_JOIN_PAIRS` in
+`agent/src/discogs_agent/tools/sql_safety_checker.py` and the
+rendered text emitted by
+`agent/src/discogs_agent/duckdb_layer/schema.py` `_render_join_graph`
+"Forbidden joins" sub-block. Adding a new pair is a contract
+amendment to this document.
+
+#### Conditionality
+
+The forbidden-join rule MUST be conditional on
+`has_master_fact = True` in the schema context. When
+`has_master_fact = False`, the rule is skipped (matches the
+renderer's conditional emission of the forbidden-joins sub-block).
+
+#### Detail string format
+
+The `detail` field of the emitted `SafetyViolation` MUST use
+unqualified table names (not aliases). For `main_release_id`
+pairs, the detail SHOULD include the legitimate-sometimes hint
+inline. Examples:
+
+- `"master_fact.master_id = release_artist_bridge.release_id"`
+- `"master_fact.main_release_id = release_artist_bridge.release_id (use the master_id traversal instead unless you specifically need the primary release of each master)"`
+
+#### Why it matters
+
+These joins are semantically wrong but mechanically valid (both
+columns are `BIGINT`). DuckDB will execute the SQL and return
+rows driven by coincidental ID overlaps between unrelated
+entities. The result is a silent wrong answer the user has no
+way to detect without external verification. The runtime rule
+catches the hallucination at safety-check time, surfaces a named
+violation in the run record, and forces the agent's retry path
+to engage.
+
+#### Known coverage gap
+
+The implementation strategy uses a regex-based scan over the
+cleaned SQL plus an alias resolver. SQL that hides the forbidden
+join inside a CTE (e.g.,
+`WITH t AS (SELECT master_id FROM master_fact) SELECT ... FROM t JOIN release_artist_bridge ON t.master_id = release_artist_bridge.release_id`)
+will NOT be caught — the scanner sees `t.master_id` but cannot
+resolve `t` back to `master_fact`. The prompt-side fix (the 009
+hint update via 014's US1) remains the primary mitigation for
+this case. A future AST-based upgrade is acknowledged but
+deferred.
+
 ---
 
 ## 3. Two-pass check
@@ -310,6 +383,48 @@ is acceptable in V1 — that shape doesn't exist in standard SQL
 outside CTE definitions, and a malicious literal would still
 have to defeat the §3.3 DDL/DML pre-pass.
 
+#### 3.2.4 Forbidden-join scan (regex on cleaned SQL)
+
+*Added 2026-05-10 by `014-cross-grain-join-postmortem`.*
+
+After the forbidden-table re-scan (§3.2.2) succeeds AND
+`has_master_fact = True` in the schema context, the safety
+checker MUST run a three-stage forbidden-join scan over the
+extracted SQL:
+
+1. **Strip SQL comments** using
+   `sqlparse.format(sql, strip_comments=True)`. Defends against
+   false positives where the SQL legitimately mentions a
+   forbidden join pair in a comment (e.g., documentation).
+
+2. **Build the alias map** by scanning `FROM <table> [AS] <alias>`
+   and `JOIN <table> [AS] <alias>` patterns in the cleaned SQL.
+   Map each alias to its underlying table name; bare-table
+   references self-map. The pattern MUST use a negative
+   lookahead so the optional alias group does not greedily
+   consume the next SQL keyword (`ON`, `JOIN`, `WHERE`, …) as a
+   phantom alias — without this guard, `FROM master_fact JOIN
+   release_artist_bridge` would match (table=master_fact,
+   alias=JOIN) and the subsequent `JOIN <table>` would never be
+   captured.
+
+3. **Scan ON predicates** for patterns of the form
+   `<ref_a> = <ref_b>` where each ref is
+   `<alias_or_table>.<column>`. For each match, resolve aliases
+   via the map, then check the resolved pair against
+   `_FORBIDDEN_JOIN_PAIRS`. Both orientations are checked
+   (predicate is symmetric). On match, emit
+   `SafetyViolation(rule="forbidden_join", detail=<canonical predicate>)`
+   and reject with `allowed=False`.
+
+The scan MUST be a no-op when `has_master_fact = False` (matches
+the renderer's conditional emission of the forbidden-joins
+sub-block).
+
+The forbidden-join scan does NOT bypass the rest of the safety
+pipeline; violations are emitted alongside any other violations
+from earlier passes.
+
 ### 3.3 Pre-pass — DDL/DML keyword scan
 
 Before either AST or EXPLAIN, the SQL string goes through
@@ -338,6 +453,7 @@ The tool returns `SafetyOutput` (see [`tools.md`](./tools.md)
 | 0 (pre-scan) | proceed | `allowed=false`, `violations=[ddl_dml]`, `extracted_sql=null`, `explain_plan=null` |
 | 1 (AST) | `extracted_sql` populated | `allowed=false`, `violations=[no_sql_extracted` *or* `read_only_required]`, `extracted_sql=null` |
 | 2 (EXPLAIN) | `allowed=true`, `explain_plan` populated | `allowed=false`, `violations=[forbidden_table` / `forbidden_function]`, `explain_plan` populated (helpful for repair prompt) |
+| 4 (forbidden-join, **added 014**) | `allowed=true` | `allowed=false`, `violations=[forbidden_join]`, `explain_plan` populated. Conditional on `has_master_fact=True`. |
 
 `explain_plan` is included in the trace for both success and
 failure — the repair prompt uses it on failure, and the
@@ -386,6 +502,12 @@ and avoids drift from the original analytical intent.
 | `test_safety_blocks_master_fact_when_absent` | unit | When `has_master_fact=false`, `SELECT * FROM master_fact` fails with `forbidden_table`. |
 | `test_safety_explain_plan_recorded` | unit | On success, `explain_plan` is non-empty in the output. |
 | `test_safety_blocks_url_literal` | unit | `SELECT 's3://bucket'` fails with `forbidden_function` (URL filter). |
+| `test_safety_blocks_forbidden_cross_grain_join_with_aliases` | unit | **Added 014.** The exact SQL from run `2557c2ce-...` (with aliases `mf`, `rab`) fails with `forbidden_join`, detail `"master_fact.master_id = release_artist_bridge.release_id"`. |
+| `test_safety_blocks_forbidden_join_label_bridge_fully_qualified` | unit | **Added 014.** Label-bridge variant fully qualified fails with `forbidden_join`. |
+| `test_safety_blocks_main_release_id_with_legitimate_hint` | unit | **Added 014.** `main_release_id` variant fails with `forbidden_join`; detail includes the legitimate-sometimes hint. |
+| `test_safety_passes_legitimate_release_fact_to_bridge_join` | unit | **Added 014.** The correct release-grain join (`release_fact.release_id = release_artist_bridge.release_id`) passes — regression guard for US1's recommended path. |
+| `test_safety_cte_indirected_forbidden_join_is_known_gap` | unit (skipped) | **Added 014.** Documents the regex-scanner's CTE-indirection gap. `pytest.mark.skip` with reason pointing at 014/research.md §R1. Unskipping requires a future AST-based upgrade. |
+| `test_safety_forbidden_join_rule_conditional_on_master_fact` | unit | **Added 014.** When `has_master_fact=False`, the `forbidden_join` rule is skipped; legitimate release-grain joins still pass. |
 | `test_path_safety_retry` | graph | Stub: 1st code generation triggers safety failure with repairable hint; 2nd succeeds. |
 | `test_path_safety_exhausted` | graph | Stub: every code generation triggers safety failure; run ends `failed_safety`. |
 

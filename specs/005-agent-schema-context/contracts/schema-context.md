@@ -136,13 +136,17 @@ Edges:
 Cross-grain traversal hints:
 - master_id and release_id are DIFFERENT identifier namespaces.
   They cannot be compared to each other.
-- To go from master_fact to artists or labels, traverse a
-  release-grain table:
-    master_fact -> release_unique_view (on master_id) ->
+- To go from master_fact to artists or labels, traverse via
+  release_fact:
+    master_fact -> release_fact (on master_id) ->
     release_artist_bridge (on release_id)
-- Prefer release_unique_view (one row per release) over
-  release_fact for cross-grain joins; release_fact is
-  row-multiplied by style and may inflate counts.
+  Use COUNT(DISTINCT release_fact.master_id) for "works per X"
+  and COUNT(DISTINCT release_fact.release_id) for "releases per X".
+  release_fact has grain release × style, so naive COUNT(*)
+  double-counts.
+- release_unique_view is NOT a usable traversal surface — it's
+  only safe for single-release spot-checks (see glossary entry
+  #3). Always traverse through release_fact for cross-grain joins.
 - Bridges are NOT unique on release_id — one row per
   (release × artist) in release_artist_bridge, one row per
   (release × label) in release_label_bridge.
@@ -248,10 +252,20 @@ The "Join graph" section MUST contain three sub-blocks, in order:
      different identifier namespaces and cannot be compared to
      each other (master-side, conditional on `has_master_fact`).
    - A worked example showing the master → release → bridge
-     traversal (master-side, conditional).
-   - A note preferring `release_unique_view` over `release_fact`
-     for cross-grain joins (because `release_fact` is
-     row-multiplied by style).
+     traversal **via `release_fact`** (master-side, conditional
+     on `has_master_fact`). *(Updated 2026-05-10 by
+     `014-cross-grain-join-postmortem` — pre-014 this used
+     `release_unique_view`, which 013's glossary entry #3
+     forbids in any JOIN/GROUP BY. See
+     [014/contracts/amendment-005-schema-context.md](../../014-cross-grain-join-postmortem/contracts/amendment-005-schema-context.md).)*
+   - A COUNT-pattern note explaining that
+     `COUNT(DISTINCT release_fact.master_id)` and
+     `COUNT(DISTINCT release_fact.release_id)` collapse the
+     release × style multiplication correctly.
+   - A positive prohibition stating that `release_unique_view`
+     is NOT a usable traversal surface, with a cross-reference
+     to glossary entry #3 (which forbids the view in JOIN/GROUP
+     BY per 013).
    - A note that bridges are NOT unique on `release_id` (one row
      per release × artist or release × label).
 

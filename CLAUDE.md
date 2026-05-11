@@ -39,8 +39,26 @@ on 2026-05-07 to pull in 009's schema-context join-graph fix,
 and again on 2026-05-08 to pull in 010's JSONB NaN sanitization
 fix.
 
-In-flight follow-on: **`013-filtered-aggregation-postmortem`**
-(branch `013-filtered-aggregation-postmortem`) — agent-side
+In-flight follow-on (current): **`014-cross-grain-join-postmortem`**
+(branch `014-cross-grain-join-postmortem`) — agent-side
+hardening triggered by run `2557c2ce-...` on 2026-05-10, where
+013's glossary tightening left 009's cross-grain traversal hint
+internally contradictory ("traverse via release_unique_view"
+vs. "don't use release_unique_view in JOIN/GROUP BY") and the
+LLM resolved the contradiction by hallucinating a forbidden
+join (`master_fact.master_id = release_artist_bridge.release_id`).
+Two work items: (US1) update `_render_join_graph`'s cross-grain
+hint to recommend `release_fact` instead of `release_unique_view`;
+(US2) promote the forbidden-joins list from descriptive prose
+to static enforcement in `sql_safety_checker` (`rule="forbidden_join"`,
+regex+alias-resolver implementation; CTE-indirection acknowledged
+as a known gap). Plus an admin task: 013's provisional
+`successor-014-pointer.md` is renumbered to `successor-015-pointer.md`
+because 014 is now this spec. See
+`specs/014-cross-grain-join-postmortem/plan.md`.
+
+Predecessor follow-on (awaiting MR review): **`013-filtered-aggregation-postmortem`**
+(branch `013-filtered-aggregation-postmortem`, pushed) — agent-side
 hardening that extends 012 in two ways. (1) Sandbox SIGKILL is
 no longer opaque: `exit_code=-9` outside the harness's own
 timeout path now produces `exception_type="oom_killed"` with
@@ -51,9 +69,10 @@ aggregations" loophole that let the LLM rationalize using
 incident, run `b809ca52-...`). Also folds in a one-line Q1
 description fix in `008/contracts/curated-questions.md`, and
 opens a future ETL-component follow-on pointer
-(`014-release-unique-view-materialization`, provisional) that
-would rewrite the view's `SELECT DISTINCT (~33 cols)`
-materialization. See `specs/013-filtered-aggregation-postmortem/plan.md`.
+(`015-release-unique-view-materialization`, provisional — bumped
+from 014 by this in-flight spec) that would rewrite the view's
+`SELECT DISTINCT (~33 cols)` materialization. See
+`specs/013-filtered-aggregation-postmortem/plan.md`.
 
 Prior 004-family work (still authoritative):
 

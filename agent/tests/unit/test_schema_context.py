@@ -175,9 +175,16 @@ def test_join_graph_section_present_when_master_fact_true() -> None:
         "different identifier namespaces" in out.lower() or "DIFFERENT identifier namespaces" in out
     )
 
-    # Worked-example traversal.
-    assert "master_fact -> release_unique_view (on master_id)" in out
+    # Worked-example traversal — post-014 uses release_fact (not
+    # release_unique_view) to resolve the contradiction with glossary
+    # entry #3. See 014-cross-grain-join-postmortem.
+    assert "master_fact -> release_fact (on master_id)" in out
     assert "-> release_artist_bridge (on release_id)" in out
+
+    # Positive prohibition — post-014. The cross-grain hint MUST
+    # explicitly state that release_unique_view is not a usable
+    # traversal surface, so the LLM can't reach for it by default.
+    assert "release_unique_view is NOT a usable traversal surface" in out
 
     # Forbidden joins — the canonical bug pattern.
     assert "master_fact.master_id  =  release_artist_bridge.release_id" in out
