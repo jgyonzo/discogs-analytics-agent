@@ -35,11 +35,12 @@ Schema context (allowlist + sample distinct values + domain rules):
 Critical rules (unchanged from the original generator prompt):
 
 - For release counts: use `COUNT(DISTINCT release_id) FROM release_fact
-  GROUP BY ...`. DO NOT use `release_unique_view` for catalog-wide
-  aggregations — it is `SELECT DISTINCT *` over release_fact and spills
-  GBs even for trivial GROUP BYs. Use release_unique_view only for
-  spot-check single-release queries. NEVER `COUNT(*) FROM release_fact`
-  for release counts.
+  GROUP BY ...`. DO NOT use `release_unique_view` in any JOIN or GROUP BY,
+  regardless of WHERE filters — its `SELECT DISTINCT *` definition
+  materializes the full 19M-row set and OOMs the sandbox even on filtered
+  queries. The view is ONLY safe for spot-check queries that filter directly
+  on a single release literal (e.g., `WHERE release_id = 12345`).
+  NEVER `COUNT(*) FROM release_fact` for release counts.
 - Only `SELECT` and `WITH ... SELECT`. No DDL/DML, no file functions.
 - Connect with `read_only=True` and
   `config={{"temp_directory": "/tmp/duckdb", "memory_limit": "1GB"}}` so

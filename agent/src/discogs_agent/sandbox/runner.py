@@ -27,6 +27,42 @@ _RESULT_RE = re.compile(
 _OUTPUT_CAP_BYTES = 16 * 1024
 
 
+def _signal_aware_exception(exit_code: int) -> tuple[str, str]:
+    """Map a non-zero exit code to a named exception_type + message.
+
+    Called from the catch-all branch when ``exception_type`` is still
+    ``None`` after the harness-timeout path, RESULT parsing, and
+    ``_error`` extraction have all declined to set it. The mapping is
+    pure (no I/O, no env) and exhaustive over the negative-vs-positive
+    space — see ``specs/013-filtered-aggregation-postmortem/contracts/sandbox-exception-taxonomy.md``
+    for the canonical taxonomy.
+
+    Returns:
+        (exception_type, exception_message) for the given ``exit_code``.
+
+    Examples:
+        >>> _signal_aware_exception(-9)[0]
+        'oom_killed'
+        >>> _signal_aware_exception(-11)[0]
+        'sandbox_signaled'
+        >>> _signal_aware_exception(1)[0]
+        'nonzero_exit'
+    """
+    if exit_code == -9:
+        return (
+            "oom_killed",
+            "kernel SIGKILL (cgroup OOM-killer); "
+            "exit_code=-9; sandbox exceeded memory budget",
+        )
+    if exit_code < 0:
+        signal_num = -exit_code
+        return (
+            "sandbox_signaled",
+            f"sandbox killed by signal {signal_num}; exit_code={exit_code}",
+        )
+    return ("nonzero_exit", f"exit_code={exit_code}")
+
+
 @dataclass
 class SandboxOutcome:
     exit_code: int
@@ -135,8 +171,12 @@ def run_in_sandbox(
             result = payload_dict.get("result")
 
     if exit_code != 0 and exception_type is None:
-        exception_type = "nonzero_exit"
-        exception_message = f"exit_code={exit_code}"
+        # Signal-aware mapping (013): distinguish kernel OOM-kill from
+        # other signal kills from positive non-zero exits. The harness's
+        # own SIGKILL-on-timeout path sets exception_type="timeout"
+        # above (line ~108), so a `-9` reaching here is necessarily
+        # external (cgroup OOM-killer in the deployed sandbox).
+        exception_type, exception_message = _signal_aware_exception(exit_code)
 
     if result is None and exception_type is None and exit_code == 0:
         # Subprocess ran clean but emitted no marker — typically means

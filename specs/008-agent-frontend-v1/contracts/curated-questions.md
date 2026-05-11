@@ -15,10 +15,10 @@ The set is sized at 7 (one above the spec's `≥ 5` floor; FR-005) so that at le
 - **title**: `Releases by decade`
 - **category**: `Trends`
 - **query**: `Show releases by decade as a bar chart`
-- **description**: `Basic decade-grain trend using release_unique_view.`
+- **description**: `Basic decade-grain release count using COUNT(DISTINCT release_id) FROM release_fact GROUP BY decade.`
 - **demonstrates**: `["simple-aggregate", "time-series"]`
 
-The "first thing to demo" question. Hits the smallest interesting analytical surface (`release_unique_view` + `decade`) and produces a chart everyone can interpret in one second.
+The "first thing to demo" question. Hits the smallest interesting analytical surface (`release_fact` + `decade` with `COUNT(DISTINCT release_id)`) and produces a chart everyone can interpret in one second. (Pre-013 this question's description claimed it used `release_unique_view`; the agent actually generates the `release_fact` form, which is strictly cheaper at catalog scale and remains the only safe shape under 013's tightened glossary.)
 
 ### Q2 — Techno over time
 

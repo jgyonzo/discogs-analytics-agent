@@ -39,6 +39,22 @@ on 2026-05-07 to pull in 009's schema-context join-graph fix,
 and again on 2026-05-08 to pull in 010's JSONB NaN sanitization
 fix.
 
+In-flight follow-on: **`013-filtered-aggregation-postmortem`**
+(branch `013-filtered-aggregation-postmortem`) — agent-side
+hardening that extends 012 in two ways. (1) Sandbox SIGKILL is
+no longer opaque: `exit_code=-9` outside the harness's own
+timeout path now produces `exception_type="oom_killed"` with
+a downstream named validator rule and a memory-pressure user
+message. (2) Glossary entry #3 drops the "catalog-wide
+aggregations" loophole that let the LLM rationalize using
+`release_unique_view` on filtered queries (per the Depeche Mode
+incident, run `b809ca52-...`). Also folds in a one-line Q1
+description fix in `008/contracts/curated-questions.md`, and
+opens a future ETL-component follow-on pointer
+(`014-release-unique-view-materialization`, provisional) that
+would rewrite the view's `SELECT DISTINCT (~33 cols)`
+materialization. See `specs/013-filtered-aggregation-postmortem/plan.md`.
+
 Prior 004-family work (still authoritative):
 
 - `specs/004-agent-v1/` — V1 baseline (graph, API, sandbox, SQL
@@ -68,6 +84,20 @@ Prior 004-family work (still authoritative):
   Postgres rejects them. Closes any agent run whose dataframe
   preview legitimately contains NULL cells. Merged to main
   2026-05-08.
+- `specs/012-catalog-aggregation-postmortem/` — SDD back-fill of
+  three hotfixes against catalog-wide OOM-kills:
+  `memory_limit=1GB` in generated DuckDB connect-config, tmpfs
+  bumped to 6 GiB, and glossary entry #3 first-round rewrite
+  steering the LLM away from `release_unique_view` for catalog-
+  wide aggregations.
+- `specs/013-filtered-aggregation-postmortem/` — *in-flight*
+  follow-on to 012. Observability fix (`oom_killed` named
+  exception_type for external SIGKILL) + glossary entry #3
+  second-round rewrite (drops the "catalog-wide" qualifier;
+  blanket ban on view-in-JOIN/GROUP-BY regardless of WHERE
+  filters). Triggered by the Depeche Mode failure run. Records
+  a future ETL follow-on pointer (provisional `014`) for the
+  view's materialization rewrite.
 
 The published DuckDB contract — produced by the ETL component —
 remains authoritative for everything the agent reads:

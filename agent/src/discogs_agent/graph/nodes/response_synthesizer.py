@@ -99,6 +99,16 @@ def _build_result_block(state: AgentState) -> str:
         state.get("terminal_status") == "succeeded_empty"
         or validation.get("reason") == "empty_result"
     )
+    # 013 / FR-003: when the chart_validator names an OOM-kill, surface
+    # a memory-pressure diagnostic hint so the synthesizer can paraphrase
+    # it into a user-facing recommendation ("narrow your question to a
+    # single artist / year / country") instead of the generic retry-
+    # exhausted copy. The hint mirrors the precedent set by the
+    # `succeeded_empty` style-vs-genre hint immediately above.
+    is_oom_killed = any(
+        (err or {}).get("rule") == "oom_killed"
+        for err in (validation.get("errors") or [])
+    )
     if is_empty:
         parts.append(
             "Result: no matching releases. The query ran successfully but returned zero rows."
@@ -109,6 +119,19 @@ def _build_result_block(state: AgentState) -> str:
             "`style` (on release_fact) or a `primary_genre` (on "
             "release_unique_view). The schema context's sample values "
             "show which column carries which kind of value."
+        )
+    elif is_oom_killed:
+        parts.append(
+            "Result: the query exceeded the sandbox's memory budget and "
+            "was terminated by the kernel OOM-killer before it could "
+            "produce a chart."
+        )
+        parts.append(
+            "Diagnostic hint: the query likely touched too many rows. "
+            "Try narrowing the scope — filter to a single artist, year, "
+            "country, or genre — or ask for a smaller slice of the "
+            "catalog. The agent will retry within the same memory budget, "
+            "so a narrower question is the reliable path to a result."
         )
     elif validation.get("valid"):
         artifact_paths = state.get("artifact_paths") or []

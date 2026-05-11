@@ -278,8 +278,55 @@ except subprocess.TimeoutExpired:
 | Clean success | 0 | None | `valid=true` |
 | Python raised inside the script | non-zero | `<exception class name>` | `valid=false`; safety-or-validation retry edge engages |
 | `RESULT` missing or wrong shape | 0 | `"no_result"` | `valid=false` |
-| Wall-clock timeout | -9 | `"timeout"` | `valid=false` |
+| Wall-clock timeout (harness watchdog) | -9 | `"timeout"` | `valid=false` |
+| **External SIGKILL** (cgroup OOM-killer; *added 2026-05-10 by `013`*) | -9 | `"oom_killed"` | `valid=false`; single named rule `oom_killed`; response synthesizer emits memory-pressure hint |
+| **Other signal kill** (SIGSEGV/SIGABRT/SIGTERM/…; *added 2026-05-10 by `013`*) | negative, ≠ -9 | `"sandbox_signaled"` | `valid=false`; legacy three-rule layering preserved |
+| Positive non-zero exit (`sys.exit(n)`) | > 0 | `"nonzero_exit"` | `valid=false`; legacy three-rule layering |
 | Process killed by RLIMIT (rare) | non-zero | `"resource_limit"` | `valid=false` |
+
+### 3.4.1 Signal-aware failure mapping
+
+*Added 2026-05-10 by `013-filtered-aggregation-postmortem`. Closes
+the observability gap where any non-timeout SIGKILL surfaced as
+opaque `exception_type = "nonzero_exit"`. Named incident: run
+`b809ca52-12bc-4268-99d4-7603a5d0ecdd` ("what is the work of
+Depeche Mode that has more versions?") on 2026-05-10.*
+
+When `subprocess.Popen.returncode < 0` on POSIX, the value `-n`
+indicates the process was terminated by signal `n`. The sandbox
+runner MUST map these signal kills to named `exception_type`
+values rather than the opaque `"nonzero_exit"`:
+
+- `exit_code == -9` AND the harness's own `subprocess.TimeoutExpired`
+  did NOT fire → `exception_type = "oom_killed"`. In the deployed
+  cgroup, this is the kernel OOM-killer (the only realistic
+  external producer of `-9`; the harness's own timeout path sets
+  `exception_type = "timeout"` *before* this branch fires).
+- `exit_code < 0` AND `exit_code != -9` AND the harness's timeout
+  did NOT fire → `exception_type = "sandbox_signaled"`. The signal
+  number is recorded in `exception_message` as `signal {n}`.
+
+The canonical value set, decision table, and downstream-consumer
+dispatch rules live in
+[`specs/013-filtered-aggregation-postmortem/contracts/sandbox-exception-taxonomy.md`](../../013-filtered-aggregation-postmortem/contracts/sandbox-exception-taxonomy.md).
+
+**Downstream consumers**:
+
+- `chart_validator`: when `exception_type == "oom_killed"`, emit
+  exactly ONE `ValidationError(rule="oom_killed", detail=<exception_message>)`,
+  short-circuiting the legacy three-error layering
+  (`nonzero_exit` + `exception_raised` + `result_missing`) that
+  pre-013 produced for all SIGKILL paths.
+- `response_synthesizer._build_result_block`: when
+  `validation_result.errors[]` contains a rule of `"oom_killed"`,
+  append a memory-pressure diagnostic hint to the result block
+  before LLM paraphrasing. User-facing `final_response` will
+  contain language about memory or query cost.
+- `code_generator._format_failures` (repair-prompt assembler):
+  no change. The function already surfaces
+  `Sandbox exception: {exception_type}: {exception_message}`;
+  the LLM receives the named cause on retry without any new
+  plumbing.
 
 ### 3.1.2 Sandbox memory budget
 

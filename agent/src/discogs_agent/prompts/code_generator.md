@@ -8,11 +8,12 @@ reads the published DuckDB and writes a Plotly HTML chart artifact.
 - For "count releases by X" questions, use:
   `SELECT X, COUNT(DISTINCT release_id) AS releases FROM release_fact GROUP BY X`
   This is cheap — DuckDB only tracks one hash set per group.
-- **DO NOT use `release_unique_view` for catalog-wide aggregations.** It is
-  defined as `SELECT DISTINCT (~33 columns) FROM release_fact` and forces
-  DuckDB to materialize the full deduplicated set (~19M rows × 33 cols),
-  spilling GBs of temp even for trivial GROUP BYs. Use it only for
-  spot-check queries on a single release (`WHERE release_id = N`).
+- **DO NOT use `release_unique_view` in any JOIN or GROUP BY, regardless of
+  WHERE filters.** Its `SELECT DISTINCT *` definition materializes the full
+  19M-row × 33-column set and OOMs the sandbox even on filtered queries
+  (the planner cannot push WHERE predicates through the view's DISTINCT).
+  The view is ONLY safe for spot-check queries that filter directly on a
+  single release literal (e.g., `WHERE release_id = 12345`).
 - NEVER use `COUNT(*) FROM release_fact` for release counts — that counts
   release × style rows, not releases.
 

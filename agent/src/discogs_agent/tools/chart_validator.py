@@ -55,6 +55,26 @@ def _validate(payload: ValidatorInput) -> ValidatorOutput:
     errors: list[ValidationError] = []
     er = payload.execution_result
 
+    # 013 / FR-002: when the runner identifies a kernel OOM-kill,
+    # short-circuit the legacy three-error layering (`nonzero_exit`
+    # + `exception_raised` + `result_missing`) with a single named
+    # rule. The OOM cause subsumes the three downstream symptoms;
+    # they don't add information for the operator. See
+    # specs/013-filtered-aggregation-postmortem/contracts/sandbox-exception-taxonomy.md.
+    if er.get("exception_type") == "oom_killed":
+        return ValidatorOutput(
+            valid=False,
+            errors=[
+                ValidationError(
+                    rule="oom_killed",
+                    detail=str(
+                        er.get("exception_message")
+                        or "sandbox SIGKILL'd by cgroup OOM-killer"
+                    ),
+                )
+            ],
+        )
+
     if er.get("exit_code") != 0:
         errors.append(
             ValidationError(
