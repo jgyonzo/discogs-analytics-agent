@@ -1,8 +1,8 @@
 # Discogs Analytics Agent
 
-A three-component system that turns the public Discogs XML dumps into a
-queryable analytics surface, lets you ask natural-language questions over
-it, and serves the answers in a browser.
+A three-component system that turns the public [Discogs](https://www.discogs.com)
+XML dumps into a queryable analytics surface, lets you ask natural-language
+questions over it, and serves the answers in a browser.
 
 - **`etl/`** — local-first batch tool. Streams the monthly Discogs
   `releases.xml` / `masters.xml` / `artists.xml` dumps, materializes
@@ -247,3 +247,15 @@ Component-specific test details live in
 
 See `specs/<feature>/quickstart.md` §"Out of scope" for each
 feature's deferred list.
+
+---
+
+## License
+
+This project's source code is licensed under the **MIT License** — see
+[`LICENSE`](LICENSE).
+
+It bundles sample data derived from the public [Discogs](https://www.discogs.com)
+data dumps (released under CC0 1.0) for testing and demonstration. That
+third-party data is **not** covered by the MIT License above; see
+[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) for details and attribution.
