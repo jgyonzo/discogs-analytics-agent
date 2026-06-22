@@ -30,7 +30,7 @@ export function App() {
           onNewConversation={handleNewConversation}
         />
       </Header>
-      <main className="flex-1 grid grid-cols-1 lg:grid-cols-[20rem_1fr_1fr] overflow-hidden">
+      <main className="flex-1 grid grid-cols-1 lg:grid-cols-[18rem_minmax(22rem,0.9fr)_1.6fr] overflow-hidden">
         <aside
           aria-label="Suggested questions"
           className="border-b lg:border-b-0 lg:border-r border-slate-200 bg-white overflow-y-auto"

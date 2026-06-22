@@ -74,6 +74,9 @@ sql = """
 df = con.execute(sql).df()
 
 fig = px.<chart_kind>(df, ...)
+# Always place any legend horizontally BELOW the plot (never on the side)
+# so the chart keeps its full horizontal width.
+fig.update_layout(legend=dict(orientation="h", yanchor="top", y=-0.2, xanchor="center", x=0.5))
 chart_path = ARTIFACT_DIR / "chart.html"
 fig.write_html(str(chart_path), include_plotlyjs="inline")
 

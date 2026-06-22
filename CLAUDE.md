@@ -1,5 +1,26 @@
 <!-- SPECKIT START -->
-Active feature: **008-agent-frontend-v1** — Demo Day frontend. A
+Active feature: **016-frontend-plot-layout** (branch
+`016-frontend-plot-layout`) — small frontend polish spanning two
+components. (US1) Rebalance the wide three-column layout in
+`frontend/src/App.tsx` so the result/chart column is the widest and
+the conversation is a bit narrower (keeping a usable minimum width);
+mobile stacking unchanged. (US2) Legends below the plot — the chart is
+opaque Plotly HTML in a sandboxed iframe, so this is an agent-side
+change: a `fig.update_layout(legend=dict(orientation="h", ...))` line
+added to the canonical code shape in
+`agent/src/discogs_agent/prompts/code_generator.md`. (US3) Copy buttons
+for the full run id and thread id badges in
+`frontend/src/components/RunMetadata.tsx` (copies untruncated value,
+transient "copied" state, keyboard/a11y, graceful clipboard failure).
+No API/persistence/schema/DuckDB-contract changes; no new deps
+(`lucide-react`, `clsx` already present); iframe sandbox unchanged.
+Constitution Check passes (VI components named, VII(b) is styling not
+schema prose). Plan + Phase-1 artifacts:
+`specs/016-frontend-plot-layout/` (`plan.md`, `research.md`,
+`data-model.md`, `quickstart.md`,
+`contracts/frontend-layout.md`, `contracts/chart-legend.md`).
+
+Prior feature: **008-agent-frontend-v1** — Demo Day frontend. A
 React + Vite + TypeScript single-page app that turns the existing
 agent into a demoable product: type or click a question, see a
 chart inline, plus collapsible SQL, a small data preview, and
